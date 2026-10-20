@@ -263,7 +263,7 @@ body.has-fs{overflow:hidden}
   function posFor(team,slot,f){var p=FORM[f||'base'][slot];var mirror=(team==='b')!==!!(state&&state.swapped);return mirror?[1000-p[0],660-p[1]]:[p[0],p[1]]}
 
   var COLORS=['#ffffff','#ffd23f','#7be0ff','#ff6b6b'];
-  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null;
+  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='';
 
   function freshItems(){
     var items=[];
@@ -274,8 +274,12 @@ body.has-fs{overflow:hidden}
   function init(){
     var loaded=null;
     try{loaded=JSON.parse(localStorage.getItem('volley-auto')||'null')}catch(e){}
-    if(loaded&&loaded.frames&&loaded.frames.length){state=loaded;state.cur=Math.min(state.cur||0,state.frames.length-1)}
+    if(loaded&&loaded.frames&&loaded.frames.length){state=cleanState(loaded);state.cur=Math.min(state.cur||0,state.frames.length-1)}
     else state={frames:[{items:freshItems(),strokes:[]}],cur:0};
+  }
+  function cleanState(o){
+    if(o&&o.frames)o.frames.forEach(function(fr){(fr.strokes||[]).forEach(function(st){delete st.pre})});
+    return o;
   }
   function F(){return state.frames[state.cur]}
   function persist(){try{localStorage.setItem('volley-auto',JSON.stringify(state))}catch(e){}}
@@ -437,7 +441,8 @@ body.has-fs{overflow:hidden}
       var h=e.target.closest('.hit');if(h)removeStroke(h.getAttribute('data-id'));
     }else{
       svg.setPointerCapture(e.pointerId);
-      drawing={id:nid(),pts:[p],dash:dashed,color:color,kind:tool,pre:dump()};
+      drawPre=dump();
+      drawing={id:nid(),pts:[p],dash:dashed,color:color,kind:tool};
       F().strokes.push(drawing);
     }
   });
@@ -465,7 +470,7 @@ body.has-fs{overflow:hidden}
       var s=drawing;drawing=null;
       var len=s.pts.length>1?Math.hypot(s.pts[s.pts.length-1][0]-s.pts[0][0],s.pts[s.pts.length-1][1]-s.pts[0][1]):0;
       if(len<14){var i=F().strokes.indexOf(s);if(i>=0)F().strokes.splice(i,1)}
-      else{pushUndo(s.pre);persist()}
+      else{pushUndo(drawPre);persist()}
       renderStrokes();
     }
     erasing=false;
@@ -620,7 +625,7 @@ body.has-fs{overflow:hidden}
       var li=document.createElement('li');
       var s=document.createElement('span');s.className='name';s.textContent=n;s.title=n;
       var lo=document.createElement('button');lo.textContent='Ouvrir';
-      lo.onclick=function(){stopPlay();pushUndo();state=JSON.parse(JSON.stringify(all[n].state));state.cur=0;sel=null;fullRender();persist();$('saveName').value=n;say('« '+n+' » ouverte.')};
+      lo.onclick=function(){stopPlay();pushUndo();state=cleanState(JSON.parse(JSON.stringify(all[n].state)));state.cur=0;sel=null;fullRender();persist();$('saveName').value=n;say('« '+n+' » ouverte.')};
       var de=document.createElement('button');de.textContent='Suppr.';de.className='danger';
       de.onclick=function(){
         if(de.dataset.arm){var st=loadStore();delete st.tactics[n];st.deleted[n]=Date.now();storeStore(st);renderSaved();syncSoon()}
@@ -632,7 +637,7 @@ body.has-fs{overflow:hidden}
   $('save').onclick=function(){
     var n=$('saveName').value.trim();
     if(!n){say('Donnez un nom à la tactique.');$('saveName').focus();return}
-    var st=loadStore();st.tactics[n]={state:JSON.parse(dump()),updated:Date.now()};delete st.deleted[n];
+    var st=loadStore();st.tactics[n]={state:cleanState(JSON.parse(dump())),updated:Date.now()};delete st.deleted[n];
     if(storeStore(st)){say('« '+n+' » enregistrée.');renderSaved();syncSoon()}else say('Enregistrement impossible dans ce navigateur.');
   };
 
