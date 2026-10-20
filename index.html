@@ -173,6 +173,9 @@ body.has-fs{overflow:hidden}
     <div class="card">
       <h2>Étapes</h2>
       <div class="steps" id="steps"></div>
+      <label class="field" style="margin-top:10px">Nom de l'étape
+        <input type="text" id="stepName" maxlength="48" autocomplete="off" placeholder="ex. Réception">
+      </label>
       <p class="hint">Chaque étape garde les positions et les tracés. Lancez l'animation pour voir les joueurs se déplacer d'une étape à l'autre.</p>
     </div>
   </div>
@@ -397,7 +400,7 @@ body.has-fs{overflow:hidden}
     if(s.id===selStroke)el('rect',{x:x-4,y:y-4,width:w+8,height:h+8,rx:14,fill:'none',stroke:'#ffffff','stroke-opacity':.6,'stroke-width':6},g);
     el('rect',{x:x,y:y,width:w,height:h,rx:12,fill:s.color,'fill-opacity':.2,stroke:s.color,'stroke-width':3,'stroke-dasharray':'12 8','stroke-opacity':.9},g);
     if(s.label){
-      var t=el('text',{x:x+w/2,y:y+h/2,class:'zlabel','font-size':Math.max(16,Math.min(30,w/6,h/3)),fill:s.color},g);
+      var t=el('text',{x:x+w/2,y:s.ltop?y+Math.min(24,h/4):y+h/2,class:'zlabel','font-size':Math.max(16,Math.min(30,w/(s.ltop?4.5:6),h/3)),fill:s.color},g);
       t.textContent=s.label;
     }
     el('rect',{class:'hit','data-id':s.id,x:x,y:y,width:w,height:h,fill:'transparent','pointer-events':(tool==='erase'||tool==='move')?'all':'none'},g);
@@ -437,7 +440,7 @@ body.has-fs{overflow:hidden}
     var box=$('steps');box.innerHTML='';
     state.frames.forEach(function(_,i){
       var b=document.createElement('button');b.className='chip';b.textContent=i+1;
-      b.setAttribute('aria-pressed',i===state.cur);b.setAttribute('aria-label','Étape '+(i+1));
+      b.setAttribute('aria-pressed',i===state.cur);b.setAttribute('aria-label','Étape '+(i+1)+(state.frames[i].name?' : '+state.frames[i].name:''));b.title=state.frames[i].name||'';
       b.onclick=function(){stopPlay();state.cur=i;sel=null;fullRender();persist()};
       box.appendChild(b);
     });
@@ -468,6 +471,7 @@ body.has-fs{overflow:hidden}
     $('teamB').setAttribute('aria-pressed',teamSel==='b');
     $('undo').disabled=!undoStack.length;
     $('zoneLayer').style.display=$('zones').checked?'':'none';
+    if(document.activeElement!==$('stepName'))$('stepName').value=F().name||'';
   }
   // team crests and names follow the sides: COB is team A, LHEVB 2 is team B
   function placeCrests(){
@@ -691,6 +695,8 @@ body.has-fs{overflow:hidden}
     var so=selStroke&&F().strokes.find(function(x){return x.id===selStroke});
     if(so&&so.kind==='zone'){so.label=$('zlbl').value.slice(0,20);renderStrokes();persist()}
   });
+  $('stepName').addEventListener('focus',function(){pushUndo()});
+  $('stepName').addEventListener('input',function(){F().name=$('stepName').value.slice(0,48);persist();renderSteps()});
   $('del').onclick=deleteSel;
   document.addEventListener('keydown',function(e){
     var tag=(e.target.tagName||'').toLowerCase();

@@ -1,5 +1,5 @@
 // Cache-first service worker: the board works offline after the first visit.
-var CACHE = 'planche-volley-v11';
+var CACHE = 'planche-volley-v12';
 var CORE = ['./', 'index.html', 'manifest.webmanifest', 'logo.png', 'crest-lhevb.png', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', function (e) {
