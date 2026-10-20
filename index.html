@@ -84,6 +84,23 @@ svg.dragging .item{cursor:grabbing}
 .saved .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .saved button{padding:4px 8px;font-size:13px}
 label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
+.pname{font-family:var(--body);font-weight:600;font-size:19px;fill:#fff;text-anchor:middle;paint-order:stroke;stroke:rgba(10,20,30,.85);stroke-width:5px;stroke-linejoin:round;pointer-events:none}
+svg.hide-names .pname{display:none}
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.field input{font-size:15px}
+.status{font-size:13px;margin:8px 0 0;color:var(--muted)}
+.status.ok{color:var(--accent)}
+.status.err{color:var(--team-b)}
+details.card summary{cursor:pointer;font-family:var(--display);font-size:15px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+details.card[open] summary{margin-bottom:10px}
+/* Full screen: toolbar on top, court filling the middle, steps at the bottom */
+body.has-fs{overflow:hidden}
+#main.fs{position:fixed;inset:0;z-index:100;background:var(--bg);flex-direction:column;gap:8px;max-width:none;
+  padding:max(8px,env(safe-area-inset-top,0px)) max(8px,env(safe-area-inset-right,0px)) max(8px,env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+#main.fs .board{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+#main.fs svg#court{width:100%;height:100%;aspect-ratio:auto}
+#main.fs .steps+.hint{display:none}
+#main.fs .card{padding:8px}
 </style>
 
 </head>
@@ -94,7 +111,7 @@ label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
 </header>
 
 <div class="layout">
-  <div class="stack">
+  <div class="stack" id="main">
     <div class="card bar" role="toolbar" aria-label="Outils de dessin">
       <button id="tMove" aria-pressed="true" title="Déplacer les joueurs et le ballon">Déplacer</button>
       <button id="tArrow" aria-pressed="false" title="Tracer une flèche droite">Flèche</button>
@@ -106,6 +123,9 @@ label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
       <span class="sep"></span>
       <button id="undo">Annuler</button>
       <button id="clearStrokes" class="danger">Effacer les tracés</button>
+      <button id="resetAll" class="danger" title="Repart d'un tableau vierge : joueurs en place, sans tracé, une seule étape">Nouveau tableau</button>
+      <span class="sep"></span>
+      <button id="fsBtn" aria-pressed="false" title="Agrandir le terrain sur tout l'écran">Plein écran</button>
     </div>
 
     <div class="card board">
@@ -150,16 +170,22 @@ label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
       </div>
       <p class="hint">La rotation fait avancer chaque joueur d'un poste : 2 → 1 → 6 → 5 → 4 → 3 → 2.</p>
       <label class="chk hint"><input type="checkbox" id="zones" checked> Afficher les numéros de poste</label>
+      <label class="chk hint"><input type="checkbox" id="names" checked> Afficher les noms des joueurs</label>
     </div>
 
     <div class="card" id="selCard">
       <h2>Sélection</h2>
       <div id="selNone" class="hint" style="margin:0">Cliquez sur un joueur, le ballon ou un plot pour le sélectionner.</div>
       <div id="selBox" hidden>
-        <div class="row">
-          <input type="text" id="lbl" maxlength="4" class="grow" aria-label="Numéro ou nom du joueur" placeholder="Numéro">
-          <button id="del" class="danger">Supprimer</button>
+        <div id="playerFields" class="stack" style="gap:8px;margin-bottom:8px">
+          <label class="field">Nom du joueur
+            <input type="text" id="pname" maxlength="20" autocomplete="off" placeholder="ex. Camille">
+          </label>
+          <label class="field">Numéro (dans le rond)
+            <input type="text" id="lbl" maxlength="3" autocomplete="off" placeholder="ex. 7">
+          </label>
         </div>
+        <button id="del" class="danger">Supprimer</button>
       </div>
     </div>
 
@@ -170,8 +196,27 @@ label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
         <button id="save" class="primary">Enregistrer</button>
       </div>
       <ul class="saved" id="saved"></ul>
-      <p class="hint" id="saveMsg">Les tactiques restent dans ce navigateur.</p>
+      <p class="hint" id="saveMsg">Les tactiques sont gardées sur cet appareil.</p>
     </div>
+
+    <details class="card" id="syncCard">
+      <summary>Synchronisation PC / tablette</summary>
+      <p class="hint" style="margin:0 0 10px">Vos tactiques sont copiées dans un Gist privé de votre compte GitHub, puis récupérées sur vos autres appareils. Entrez le même jeton sur chaque appareil.</p>
+      <label class="field">Jeton GitHub (droit « gist » uniquement)
+        <input type="text" id="token" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ghp_…" style="-webkit-text-security:disc">
+      </label>
+      <p class="hint" style="margin:6px 0 10px"><a href="https://github.com/settings/tokens/new?description=Planche%20volley&scopes=gist" target="_blank" rel="noopener">Créer le jeton sur GitHub</a>, cocher uniquement « gist », durée « No expiration », puis le coller ici.</p>
+      <div class="row">
+        <button id="syncNow" class="primary grow">Synchroniser</button>
+        <button id="syncOff">Déconnecter</button>
+      </div>
+      <p class="status" id="syncMsg" role="status">Non connecté.</p>
+      <div class="row" style="margin-top:10px">
+        <button id="exportBtn" class="grow">Exporter un fichier</button>
+        <button id="importBtn" class="grow">Importer</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+    </details>
   </aside>
 </div>
 
@@ -240,6 +285,7 @@ label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
       el('circle',{r:26,fill:'rgba(0,0,0,.28)',cy:3},g);
       el('circle',{class:'body',r:24,stroke:'#fff','stroke-width':3},g);
       el('text',{class:'num'},g);
+      el('text',{class:'pname',y:47},g);
     }else if(it.type==='ball'){
       el('circle',{r:17,fill:'rgba(0,0,0,.28)',cy:3},g);
       el('circle',{r:16,fill:'#fff',stroke:'#16202a','stroke-width':2},g);
@@ -261,6 +307,7 @@ label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
         g.querySelector('.body').setAttribute('fill',itemFill(it));
         var t=g.querySelector('.num');t.textContent=it.label;
         t.setAttribute('font-size',it.label.length>2?16:it.label.length>1?24:28);
+        g.querySelector('.pname').textContent=it.name||'';
       }
       var ring=g.querySelector('.ring');
       if(sel===it.id){if(!ring){el('circle',{class:'ring',r:it.type==='ball'?24:32},g)}}else if(ring)ring.remove();
@@ -312,7 +359,11 @@ label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
   function renderPanel(){
     var it=sel&&find(sel);
     $('selNone').hidden=!!it;$('selBox').hidden=!it;
-    if(it){$('lbl').hidden=it.type!=='p';if(it.type==='p')$('lbl').value=it.label}
+    if(it){
+      $('playerFields').hidden=it.type!=='p';
+      if(it.type==='p'&&document.activeElement!==$('lbl')&&document.activeElement!==$('pname')){$('lbl').value=it.label;$('pname').value=it.name||''}
+    }
+    svg.classList.toggle('hide-names',!$('names').checked);
     $('teamA').setAttribute('aria-pressed',teamSel==='a');
     $('teamB').setAttribute('aria-pressed',teamSel==='b');
     $('undo').disabled=!undoStack.length;
@@ -457,9 +508,14 @@ label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
 
   // ---------- selection ----------
   $('lbl').addEventListener('input',function(){
-    var it=sel&&find(sel);if(it&&it.type==='p'){it.label=$('lbl').value.slice(0,4);renderItems();persist()}
+    var it=sel&&find(sel);if(it&&it.type==='p'){it.label=$('lbl').value.slice(0,3);renderItems();persist()}
   });
-  $('lbl').addEventListener('focus',function(){var it=sel&&find(sel);if(it)pushUndo()});
+  $('pname').addEventListener('input',function(){
+    var it=sel&&find(sel);if(it&&it.type==='p'){it.name=$('pname').value.slice(0,20);renderItems();persist()}
+  });
+  function undoOnFocus(){var it=sel&&find(sel);if(it)pushUndo()}
+  $('lbl').addEventListener('focus',undoOnFocus);
+  $('pname').addEventListener('focus',undoOnFocus);
   function deleteSel(){
     if(!sel)return;pushUndo();
     F().items=F().items.filter(function(i){return i.id!==sel});sel=null;renderItems();renderPanel();persist();
@@ -467,28 +523,76 @@ label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
   $('del').onclick=deleteSel;
   document.addEventListener('keydown',function(e){
     var tag=(e.target.tagName||'').toLowerCase();
+    if(e.key==='Escape'&&$('main').classList.contains('fs')){setFull(false);return}
     if(tag==='input'||tag==='select')return;
     if((e.key==='Delete'||e.key==='Backspace')&&sel){e.preventDefault();deleteSel()}
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();$('undo').click()}
   });
   $('zones').onchange=renderPanel;
+  $('names').onchange=renderPanel;
+
+  // ---------- full screen ----------
+  // Uses the browser Fullscreen API when it exists, and always a full-window layout as fallback.
+  function setFull(on){
+    var m=$('main');
+    m.classList.toggle('fs',on);
+    document.body.classList.toggle('has-fs',on);
+    $('fsBtn').textContent=on?'Quitter le plein écran':'Plein écran';
+    $('fsBtn').setAttribute('aria-pressed',on);
+    try{
+      var d=document,fsEl=d.fullscreenElement||d.webkitFullscreenElement;
+      if(on&&!fsEl){var rq=m.requestFullscreen||m.webkitRequestFullscreen;if(rq){var r=rq.call(m);if(r&&r.catch)r.catch(function(){})}}
+      else if(!on&&fsEl){var ex=d.exitFullscreen||d.webkitExitFullscreen;if(ex){var r2=ex.call(d);if(r2&&r2.catch)r2.catch(function(){})}}
+    }catch(e){}
+  }
+  $('fsBtn').onclick=function(){setFull(!$('main').classList.contains('fs'))};
+  function onFsChange(){
+    var fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+    if(!fsEl&&$('main').classList.contains('fs'))setFull(false);
+  }
+  document.addEventListener('fullscreenchange',onFsChange);
+  document.addEventListener('webkitfullscreenchange',onFsChange);
 
   // ---------- saved tactics ----------
-  function loadAll(){try{return JSON.parse(localStorage.getItem('volley-saved')||'{}')}catch(e){return {}}}
-  function storeAll(o){try{localStorage.setItem('volley-saved',JSON.stringify(o));return true}catch(e){return false}}
-  function say(m){$('saveMsg').textContent=m;clearTimeout(savedMsgTimer);savedMsgTimer=setTimeout(function(){$('saveMsg').textContent='Les tactiques restent dans ce navigateur.'},3500)}
+  // Store shape: {tactics:{name:{state,updated}}, deleted:{name:timestamp}}
+  var STORE_KEY='volley-saved', SYNC_TOKEN='volley-token', SYNC_GIST='volley-gist';
+  var GIST_DESC='Planche volley - synchronisation', GIST_FILE='planche-volley.json';
+  function emptyStore(){return {tactics:{},deleted:{}}}
+  function loadStore(){
+    var raw=null;try{raw=JSON.parse(localStorage.getItem(STORE_KEY)||'null')}catch(e){}
+    if(!raw||typeof raw!=='object')return emptyStore();
+    if(raw.tactics)return {tactics:raw.tactics||{},deleted:raw.deleted||{}};
+    var s=emptyStore();
+    Object.keys(raw).forEach(function(n){if(raw[n]&&raw[n].frames)s.tactics[n]={state:raw[n],updated:Date.now()}});
+    return s;
+  }
+  function storeStore(s){try{localStorage.setItem(STORE_KEY,JSON.stringify(s));return true}catch(e){return false}}
+  function mergeStores(a,b){
+    var out=emptyStore(),names={};
+    [a,b].forEach(function(s){Object.keys(s.tactics).forEach(function(n){names[n]=1});Object.keys(s.deleted).forEach(function(n){names[n]=1})});
+    Object.keys(names).forEach(function(n){
+      var ta=a.tactics[n],tb=b.tactics[n];
+      var t=ta&&tb?(ta.updated>=tb.updated?ta:tb):(ta||tb);
+      var d=Math.max(a.deleted[n]||0,b.deleted[n]||0);
+      if(t&&t.updated>d)out.tactics[n]=t;
+      else if(d)out.deleted[n]=d;
+    });
+    return out;
+  }
+  var SAVE_HINT='Les tactiques sont gardées sur cet appareil.';
+  function say(m){$('saveMsg').textContent=m;clearTimeout(savedMsgTimer);savedMsgTimer=setTimeout(function(){$('saveMsg').textContent=SAVE_HINT},3500)}
   function renderSaved(){
-    var all=loadAll(),ul=$('saved');ul.innerHTML='';
-    var names=Object.keys(all);
+    var all=loadStore().tactics,ul=$('saved');ul.innerHTML='';
+    var names=Object.keys(all).sort(function(x,y){return all[y].updated-all[x].updated});
     if(!names.length){var li=document.createElement('li');li.className='hint';li.style.margin='0';li.textContent='Aucune tactique enregistrée.';ul.appendChild(li);return}
     names.forEach(function(n){
       var li=document.createElement('li');
       var s=document.createElement('span');s.className='name';s.textContent=n;s.title=n;
       var lo=document.createElement('button');lo.textContent='Ouvrir';
-      lo.onclick=function(){stopPlay();pushUndo();state=JSON.parse(JSON.stringify(all[n]));state.cur=0;sel=null;fullRender();persist();say('« '+n+' » ouverte.')};
+      lo.onclick=function(){stopPlay();pushUndo();state=JSON.parse(JSON.stringify(all[n].state));state.cur=0;sel=null;fullRender();persist();$('saveName').value=n;say('« '+n+' » ouverte.')};
       var de=document.createElement('button');de.textContent='Suppr.';de.className='danger';
       de.onclick=function(){
-        if(de.dataset.arm){var a=loadAll();delete a[n];storeAll(a);renderSaved()}
+        if(de.dataset.arm){var st=loadStore();delete st.tactics[n];st.deleted[n]=Date.now();storeStore(st);renderSaved();syncSoon()}
         else{de.dataset.arm='1';de.textContent='Confirmer';setTimeout(function(){if(de.isConnected){delete de.dataset.arm;de.textContent='Suppr.'}},3000)}
       };
       li.appendChild(s);li.appendChild(lo);li.appendChild(de);ul.appendChild(li);
@@ -497,12 +601,117 @@ label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
   $('save').onclick=function(){
     var n=$('saveName').value.trim();
     if(!n){say('Donnez un nom à la tactique.');$('saveName').focus();return}
-    var all=loadAll();all[n]=JSON.parse(dump());
-    if(storeAll(all)){say('« '+n+' » enregistrée.');renderSaved()}else say('Enregistrement impossible dans ce navigateur.');
+    var st=loadStore();st.tactics[n]={state:JSON.parse(dump()),updated:Date.now()};delete st.deleted[n];
+    if(storeStore(st)){say('« '+n+' » enregistrée.');renderSaved();syncSoon()}else say('Enregistrement impossible dans ce navigateur.');
+  };
+
+  // ---------- sync through a private GitHub Gist ----------
+  var syncing=false, syncTimer=null;
+  function syncSay(m,kind){var p=$('syncMsg');p.textContent=m;p.className='status'+(kind?' '+kind:'')}
+  function getTok(){try{return localStorage.getItem(SYNC_TOKEN)||''}catch(e){return ''}}
+  function api(method,path,body){
+    return fetch('https://api.github.com'+path,{method:method,headers:{'Authorization':'Bearer '+getTok(),'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:body?JSON.stringify(body):undefined})
+      .then(function(r){
+        if(r.status===401)throw new Error('AUTH');
+        if(r.status===403||r.status===404)throw new Error('FORBIDDEN');
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        return r.json();
+      });
+  }
+  function ensureGist(){
+    var id='';try{id=localStorage.getItem(SYNC_GIST)||''}catch(e){}
+    if(id)return Promise.resolve(id);
+    return api('GET','/gists?per_page=100').then(function(list){
+      var g=list.filter(function(x){return x.description===GIST_DESC})[0];
+      if(g)return g.id;
+      var files={};files[GIST_FILE]={content:JSON.stringify(emptyStore())};
+      return api('POST','/gists',{description:GIST_DESC,public:false,files:files}).then(function(c){return c.id});
+    }).then(function(gid){try{localStorage.setItem(SYNC_GIST,gid)}catch(e){}return gid});
+  }
+  function readRemote(g){
+    var f=g.files&&g.files[GIST_FILE];
+    if(!f)return Promise.resolve(emptyStore());
+    var get=f.truncated?fetch(f.raw_url).then(function(r){return r.text()}):Promise.resolve(f.content);
+    return get.then(function(t){
+      var o=null;try{o=JSON.parse(t)}catch(e){}
+      return o&&o.tactics?{tactics:o.tactics,deleted:o.deleted||{}}:emptyStore();
+    });
+  }
+  function doSync(){
+    if(!getTok())return Promise.resolve();
+    if(syncing)return Promise.resolve();
+    syncing=true;syncSay('Synchronisation…');
+    var gid;
+    return ensureGist().then(function(id){gid=id;return api('GET','/gists/'+id)})
+      .then(readRemote)
+      .then(function(remote){
+        var local=loadStore(),merged=mergeStores(local,remote);
+        storeStore(merged);renderSaved();
+        if(JSON.stringify(merged)===JSON.stringify(remote))return;
+        var files={};files[GIST_FILE]={content:JSON.stringify(merged)};
+        return api('PATCH','/gists/'+gid,{files:files});
+      })
+      .then(function(){
+        var t=new Date();syncSay('Synchronisé à '+t.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'.','ok');
+      })
+      .catch(function(e){
+        if(e.message==='AUTH')syncSay('Jeton refusé. Vérifiez qu’il est copié en entier.','err');
+        else if(e.message==='FORBIDDEN')syncSay('Accès refusé. Le jeton doit avoir le droit « gist ».','err');
+        else syncSay('Pas de connexion à GitHub. Vos tactiques restent sur cet appareil.','err');
+      })
+      .then(function(){syncing=false});
+  }
+  function syncSoon(){if(!getTok())return;clearTimeout(syncTimer);syncTimer=setTimeout(doSync,600)}
+  $('syncNow').onclick=function(){
+    var t=$('token').value.trim();
+    if(!t){syncSay('Collez d’abord votre jeton GitHub.','err');$('token').focus();return}
+    if(t!==getTok()){try{localStorage.setItem(SYNC_TOKEN,t);localStorage.removeItem(SYNC_GIST)}catch(e){syncSay('Impossible de garder le jeton sur cet appareil.','err');return}}
+    doSync();
+  };
+  $('syncOff').onclick=function(){
+    try{localStorage.removeItem(SYNC_TOKEN);localStorage.removeItem(SYNC_GIST)}catch(e){}
+    $('token').value='';syncSay('Non connecté. Vos tactiques restent sur cet appareil.');
+  };
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)syncSoon()});
+  window.addEventListener('online',syncSoon);
+
+  // ---------- file export / import ----------
+  $('exportBtn').onclick=function(){
+    var blob=new Blob([JSON.stringify(loadStore(),null,1)],{type:'application/json'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tactiques-volley.json';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},2000);
+  };
+  $('importBtn').onclick=function(){$('importFile').click()};
+  $('importFile').onchange=function(){
+    var f=this.files&&this.files[0];if(!f)return;
+    var r=new FileReader();
+    r.onload=function(){
+      var o=null;try{o=JSON.parse(r.result)}catch(e){}
+      if(!o||!o.tactics){say('Ce fichier n’est pas une sauvegarde de tactiques.');return}
+      storeStore(mergeStores(loadStore(),{tactics:o.tactics,deleted:o.deleted||{}}));
+      renderSaved();say('Tactiques importées.');syncSoon();
+    };
+    r.readAsText(f);this.value='';
+  };
+
+  // ---------- reset the whole board ----------
+  var resetTimer=null;
+  $('resetAll').onclick=function(){
+    var b=$('resetAll');
+    if(!b.dataset.arm){
+      b.dataset.arm='1';b.textContent='Confirmer ?';
+      resetTimer=setTimeout(function(){delete b.dataset.arm;b.textContent='Nouveau tableau'},3000);
+      return;
+    }
+    clearTimeout(resetTimer);delete b.dataset.arm;b.textContent='Nouveau tableau';
+    stopPlay();pushUndo();
+    state={frames:[{items:freshItems(),strokes:[]}],cur:0};sel=null;
+    $('saveName').value='';fullRender();persist();
   };
 
   // ---------- boot ----------
   init();buildCourt();$('undo').disabled=true;fullRender();renderSaved();
+  if(getTok()){$('token').value=getTok();$('syncCard').open=true;doSync()}
 })();
 </script>
 <script>
