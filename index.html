@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b7a75">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Planche Volley">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh}
+button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+</style>
+<title>Planche Tactique Volley</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: toolbar above a full-width court, steps bar below it, side panel (adds, rotations, selection, saves) on the right; stacks on phones. */
+:root{
+  --bg:#e8ecef; --panel:#ffffff; --ink:#14202b; --muted:#5a6a77; --line:#cfd8de;
+  --accent:#0b7a75; --accent-ink:#ffffff; --soft:#eef3f5;
+  --team-a:#2457c5; --team-b:#d23b2f; --libero:#e8a317;
+  --court:#d98b4a; --free:#2f6f84; --mark:#ffffff;
+  --display:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f161c; --panel:#18222b; --ink:#e8eef2; --muted:#93a3b0; --line:#2b3a46;
+  --accent:#38c2b8; --accent-ink:#06211f; --soft:#1f2c36; --team-a:#5b8cf0; --team-b:#f0685c; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161c; --panel:#18222b; --ink:#e8eef2; --muted:#93a3b0; --line:#2b3a46;
+  --accent:#38c2b8; --accent-ink:#06211f; --soft:#1f2c36; --team-a:#5b8cf0; --team-b:#f0685c; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+*{box-sizing:border-box}
+h1{font-family:var(--display);font-size:30px;line-height:1;margin:0;letter-spacing:.02em;text-transform:uppercase}
+h2{font-family:var(--display);font-size:15px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;margin-bottom:14px}
+header p{margin:0;color:var(--muted)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:16px;align-items:start;max-width:1400px;margin:0 auto}
+@media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.stack{display:flex;flex-direction:column;gap:12px;min-width:0}
+.bar{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+.sep{width:1px;align-self:stretch;background:var(--line);margin:0 4px}
+button,select,input[type=text]{font:inherit;color:var(--ink)}
+button{background:var(--soft);border:1px solid var(--line);border-radius:7px;padding:7px 11px;cursor:pointer;font-weight:500}
+button:hover{border-color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible,svg:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.danger:hover{border-color:var(--team-b);color:var(--team-b)}
+button:disabled{opacity:.45;cursor:default}
+select,input[type=text]{background:var(--soft);border:1px solid var(--line);border-radius:7px;padding:7px 9px;min-width:0}
+.sw{width:26px;height:26px;padding:0;border-radius:50%;border:2px solid var(--line)}
+.sw[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--panel)}
+.board{padding:8px}
+svg#court{display:block;width:100%;height:auto;aspect-ratio:1000/660;max-width:100%;border-radius:6px;touch-action:none;user-select:none;-webkit-user-select:none}
+svg#court.t-move{cursor:default}
+svg#court.t-draw{cursor:crosshair}
+svg#court.t-erase{cursor:not-allowed}
+.item{cursor:grab}
+svg.anim .item{transition:transform .9s ease-in-out}
+svg.dragging .item{transition:none}
+svg.dragging .item{cursor:grabbing}
+.item .num{font-family:var(--display);font-weight:700;fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.ring{fill:none;stroke:#fff;stroke-width:3;stroke-dasharray:6 5}
+.zone{font-family:var(--display);font-weight:700;font-size:64px;fill:#fff;opacity:.2;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.steps{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{min-width:38px;font-family:var(--display);font-size:17px;font-weight:700;padding:5px 10px}
+.hint{color:var(--muted);font-size:13px;margin:8px 0 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{min-width:0}
+.grow{flex:1}
+.team-a{--t:var(--team-a)} .team-b{--t:var(--team-b)}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.saved{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.saved li{display:flex;gap:6px;align-items:center}
+.saved .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.saved button{padding:4px 8px;font-size:13px}
+label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
+</style>
+
+</head>
+<body>
+<header>
+  <h1>Planche tactique volley</h1>
+  <p>Placez vos joueurs, tracez les déplacements, enchaînez les étapes.</p>
+</header>
+
+<div class="layout">
+  <div class="stack">
+    <div class="card bar" role="toolbar" aria-label="Outils de dessin">
+      <button id="tMove" aria-pressed="true" title="Déplacer les joueurs et le ballon">Déplacer</button>
+      <button id="tArrow" aria-pressed="false" title="Tracer une flèche droite">Flèche</button>
+      <button id="tFree" aria-pressed="false" title="Dessiner une trajectoire à main levée">Trait libre</button>
+      <button id="tErase" aria-pressed="false" title="Cliquer sur un tracé pour l'effacer">Gomme</button>
+      <span class="sep"></span>
+      <button id="sDash" aria-pressed="false" title="Trait pointillé (trajectoire du ballon)">Pointillé</button>
+      <span class="bar" id="swatches" aria-label="Couleur du tracé"></span>
+      <span class="sep"></span>
+      <button id="undo">Annuler</button>
+      <button id="clearStrokes" class="danger">Effacer les tracés</button>
+    </div>
+
+    <div class="card board">
+      <svg id="court" class="t-move anim" viewBox="0 0 1000 660" tabindex="0" role="img" aria-label="Terrain de volley, 18 m sur 9 m"></svg>
+    </div>
+
+    <div class="card">
+      <h2>Étapes</h2>
+      <div class="steps" id="steps"></div>
+      <p class="hint">Chaque étape garde les positions et les tracés. Lancez l'animation pour voir les joueurs se déplacer d'une étape à l'autre.</p>
+    </div>
+  </div>
+
+  <aside class="stack">
+    <div class="card">
+      <h2>Ajouter</h2>
+      <div class="row">
+        <button id="addA"><span class="dot" style="background:var(--team-a)"></span>Joueur A</button>
+        <button id="addB"><span class="dot" style="background:var(--team-b)"></span>Joueur B</button>
+        <button id="addL"><span class="dot" style="background:var(--libero)"></span>Libéro</button>
+        <button id="addBall">Ballon</button>
+        <button id="addCone">Plot</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Équipes</h2>
+      <div class="row" role="group" aria-label="Équipe ciblée" style="margin-bottom:8px">
+        <button id="teamA" aria-pressed="true"><span class="dot" style="background:var(--team-a)"></span>Équipe A</button>
+        <button id="teamB" aria-pressed="false"><span class="dot" style="background:var(--team-b)"></span>Équipe B</button>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <select id="formation" class="grow" aria-label="Placement">
+          <option value="base">Placement de base</option>
+          <option value="w">Réception en W</option>
+        </select>
+        <button id="applyForm">Appliquer</button>
+      </div>
+      <div class="row">
+        <button id="rotate" class="grow">Rotation ↻</button>
+        <button id="resetTeams" class="danger" title="Remet les deux équipes en place, numéros 1 à 6">Tout remettre</button>
+      </div>
+      <p class="hint">La rotation fait avancer chaque joueur d'un poste : 2 → 1 → 6 → 5 → 4 → 3 → 2.</p>
+      <label class="chk hint"><input type="checkbox" id="zones" checked> Afficher les numéros de poste</label>
+    </div>
+
+    <div class="card" id="selCard">
+      <h2>Sélection</h2>
+      <div id="selNone" class="hint" style="margin:0">Cliquez sur un joueur, le ballon ou un plot pour le sélectionner.</div>
+      <div id="selBox" hidden>
+        <div class="row">
+          <input type="text" id="lbl" maxlength="4" class="grow" aria-label="Numéro ou nom du joueur" placeholder="Numéro">
+          <button id="del" class="danger">Supprimer</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Mes tactiques</h2>
+      <div class="row">
+        <input type="text" id="saveName" class="grow" maxlength="40" aria-label="Nom de la tactique" placeholder="Nom, ex. Réception adverse">
+        <button id="save" class="primary">Enregistrer</button>
+      </div>
+      <ul class="saved" id="saved"></ul>
+      <p class="hint" id="saveMsg">Les tactiques restent dans ce navigateur.</p>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function(){
+  var NS='http://www.w3.org/2000/svg';
+  var svg=document.getElementById('court');
+  var $=function(id){return document.getElementById(id)};
+  var uid=0; function nid(){uid++;return 'i'+Date.now().toString(36)+uid}
+
+  // Base positions for team A (left side, facing the net, +x toward net). Team B is the point reflection.
+  var FORM={
+    base:{4:[420,200],3:[420,330],2:[420,460],5:[240,200],6:[240,330],1:[240,460]},
+    w:{5:[180,200],6:[165,330],1:[180,460],4:[320,265],3:[320,395],2:[440,470]}
+  };
+  function posFor(team,slot,f){var p=FORM[f||'base'][slot];return team==='b'?[1000-p[0],660-p[1]]:[p[0],p[1]]}
+
+  var COLORS=['#ffffff','#ffd23f','#7be0ff','#ff6b6b'];
+  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null;
+
+  function freshItems(){
+    var items=[];
+    ['a','b'].forEach(function(t){for(var s=1;s<=6;s++){var p=posFor(t,s);items.push({id:nid(),type:'p',team:t,slot:s,x:p[0],y:p[1],label:String(s)})}});
+    items.push({id:nid(),type:'ball',x:70,y:500});
+    return items;
+  }
+  function init(){
+    var loaded=null;
+    try{loaded=JSON.parse(localStorage.getItem('volley-auto')||'null')}catch(e){}
+    if(loaded&&loaded.frames&&loaded.frames.length){state=loaded;state.cur=Math.min(state.cur||0,state.frames.length-1)}
+    else state={frames:[{items:freshItems(),strokes:[]}],cur:0};
+  }
+  function F(){return state.frames[state.cur]}
+  function persist(){try{localStorage.setItem('volley-auto',JSON.stringify(state))}catch(e){}}
+  function dump(){return JSON.stringify(state)}
+  function pushUndo(s){undoStack.push(s||dump());if(undoStack.length>80)undoStack.shift();$('undo').disabled=false}
+  function find(id){return F().items.find(function(i){return i.id===id})}
+
+  // ---------- court drawing ----------
+  function el(name,attrs,parent){var e=document.createElementNS(NS,name);for(var k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+  function buildCourt(){
+    svg.innerHTML='';
+    el('rect',{x:0,y:0,width:1000,height:660,fill:'var(--free)'},svg);
+    el('rect',{x:100,y:130,width:800,height:400,fill:'var(--court)'},svg);
+    var g=el('g',{stroke:'var(--mark)','stroke-width':4,fill:'none','stroke-linecap':'square'},svg);
+    el('rect',{x:100,y:130,width:800,height:400},g);
+    el('line',{x1:500,y1:130,x2:500,y2:530},g);
+    el('line',{x1:367,y1:130,x2:367,y2:530,'stroke-width':3},g);
+    el('line',{x1:633,y1:130,x2:633,y2:530,'stroke-width':3},g);
+    var zg=el('g',{id:'zoneLayer'},svg);
+    for(var s=1;s<=6;s++){['a','b'].forEach(function(t){var p=posFor(t,s);var x=el('text',{x:p[0],y:p[1],class:'zone'},zg);x.textContent=s})}
+    // net
+    el('line',{x1:500,y1:112,x2:500,y2:548,stroke:'rgba(0,0,0,.35)','stroke-width':14},svg);
+    el('line',{x1:500,y1:112,x2:500,y2:548,stroke:'#f3f3f3','stroke-width':6,'stroke-dasharray':'3 3'},svg);
+    el('circle',{cx:500,cy:112,r:7,fill:'#2b2f33'},svg);
+    el('circle',{cx:500,cy:548,r:7,fill:'#2b2f33'},svg);
+    el('g',{id:'strokeLayer'},svg);
+    el('g',{id:'itemLayer'},svg);
+  }
+
+  // ---------- rendering ----------
+  var nodes={};
+  function makeItemNode(it){
+    var g=el('g',{class:'item','data-id':it.id});
+    if(it.type==='p'){
+      el('circle',{r:26,fill:'rgba(0,0,0,.28)',cy:3},g);
+      el('circle',{class:'body',r:24,stroke:'#fff','stroke-width':3},g);
+      el('text',{class:'num'},g);
+    }else if(it.type==='ball'){
+      el('circle',{r:17,fill:'rgba(0,0,0,.28)',cy:3},g);
+      el('circle',{r:16,fill:'#fff',stroke:'#16202a','stroke-width':2},g);
+      el('path',{d:'M-16 0 C-6 -9 6 -9 16 0 M-11 -12 C-3 -3 -3 8 -6 15 M11 -12 C3 -3 3 8 6 15',fill:'none',stroke:'#2457c5','stroke-width':2.2},g);
+    }else{
+      el('polygon',{points:'0,-20 17,14 -17,14',fill:'#ff7a1a',stroke:'#fff','stroke-width':3,'stroke-linejoin':'round'},g);
+    }
+    return g;
+  }
+  function itemFill(it){return it.team==='a'?'var(--team-a)':it.team==='b'?'var(--team-b)':'var(--libero)'}
+  function renderItems(){
+    var layer=$('itemLayer'), alive={};
+    F().items.forEach(function(it){
+      alive[it.id]=1;
+      var g=nodes[it.id];
+      if(!g){g=nodes[it.id]=makeItemNode(it);layer.appendChild(g)}
+      g.style.transform='translate('+it.x+'px,'+it.y+'px)';
+      if(it.type==='p'){
+        g.querySelector('.body').setAttribute('fill',itemFill(it));
+        var t=g.querySelector('.num');t.textContent=it.label;
+        t.setAttribute('font-size',it.label.length>2?16:it.label.length>1?24:28);
+      }
+      var ring=g.querySelector('.ring');
+      if(sel===it.id){if(!ring){el('circle',{class:'ring',r:it.type==='ball'?24:32},g)}}else if(ring)ring.remove();
+    });
+    Object.keys(nodes).forEach(function(id){if(!alive[id]){nodes[id].remove();delete nodes[id]}});
+    // keep dragged/selected on top
+    if(sel&&nodes[sel])layer.appendChild(nodes[sel]);
+  }
+  function arrowHead(pts,color){
+    var end=pts[pts.length-1], from=pts[0];
+    for(var i=pts.length-2;i>=0;i--){from=pts[i];if(Math.hypot(end[0]-from[0],end[1]-from[1])>=14)break}
+    var a=Math.atan2(end[1]-from[1],end[0]-from[0]), L=20, W=0.45;
+    var p1=[end[0]-L*Math.cos(a-W),end[1]-L*Math.sin(a-W)], p2=[end[0]-L*Math.cos(a+W),end[1]-L*Math.sin(a+W)];
+    return end.join(',')+' '+p1.join(',')+' '+p2.join(',');
+  }
+  function renderStrokes(){
+    var layer=$('strokeLayer');layer.innerHTML='';
+    F().strokes.forEach(function(s){
+      if(s.pts.length<2)return;
+      var d='M'+s.pts.map(function(p){return p[0].toFixed(1)+' '+p[1].toFixed(1)}).join(' L');
+      var g=el('g',{},layer);
+      var common={d:d,fill:'none','stroke-linecap':'round','stroke-linejoin':'round'};
+      var dash=s.dash?{'stroke-dasharray':'2 11'}:{};
+      el('path',Object.assign({},common,{stroke:'rgba(0,0,0,.35)','stroke-width':s.dash?9:8},dash),g);
+      el('path',Object.assign({},common,{stroke:s.color,'stroke-width':s.dash?6:4.5},dash),g);
+      var hp=arrowHead(s.pts);
+      el('polygon',{points:hp,fill:s.color,stroke:'rgba(0,0,0,.35)','stroke-width':2,'stroke-linejoin':'round'},g);
+      el('path',{d:d,class:'hit','data-id':s.id,fill:'none',stroke:'transparent','stroke-width':22,'pointer-events':tool==='erase'?'stroke':'none'},g);
+    });
+  }
+  function renderSteps(){
+    var box=$('steps');box.innerHTML='';
+    state.frames.forEach(function(_,i){
+      var b=document.createElement('button');b.className='chip';b.textContent=i+1;
+      b.setAttribute('aria-pressed',i===state.cur);b.setAttribute('aria-label','Étape '+(i+1));
+      b.onclick=function(){stopPlay();state.cur=i;sel=null;fullRender();persist()};
+      box.appendChild(b);
+    });
+    var add=document.createElement('button');add.textContent='+ Étape';add.title='Copie l\'étape actuelle à la suite';
+    add.onclick=function(){stopPlay();pushUndo();var c=JSON.parse(JSON.stringify(F()));state.frames.splice(state.cur+1,0,c);state.cur++;fullRender();persist()};
+    box.appendChild(add);
+    var rm=document.createElement('button');rm.textContent='Supprimer l\'étape';rm.className='danger';rm.disabled=state.frames.length<2;
+    rm.onclick=function(){stopPlay();pushUndo();state.frames.splice(state.cur,1);state.cur=Math.max(0,state.cur-1);sel=null;fullRender();persist()};
+    box.appendChild(rm);
+    var pl=document.createElement('button');pl.className='primary';pl.textContent=playTimer?'■ Stop':'▶ Animer';pl.disabled=state.frames.length<2;
+    pl.onclick=function(){playTimer?stopPlay():startPlay()};
+    box.appendChild(pl);
+  }
+  function renderPanel(){
+    var it=sel&&find(sel);
+    $('selNone').hidden=!!it;$('selBox').hidden=!it;
+    if(it){$('lbl').hidden=it.type!=='p';if(it.type==='p')$('lbl').value=it.label}
+    $('teamA').setAttribute('aria-pressed',teamSel==='a');
+    $('teamB').setAttribute('aria-pressed',teamSel==='b');
+    $('undo').disabled=!undoStack.length;
+    $('zoneLayer').style.display=$('zones').checked?'':'none';
+  }
+  function fullRender(){renderItems();renderStrokes();renderSteps();renderPanel()}
+
+  // ---------- play ----------
+  function startPlay(){
+    state.cur=0;sel=null;fullRender();
+    playTimer=setInterval(function(){
+      if(state.cur>=state.frames.length-1){stopPlay();return}
+      state.cur++;fullRender();$('steps').querySelector('.primary').textContent='■ Stop';
+    },1300);
+    renderSteps();
+  }
+  function stopPlay(){if(playTimer){clearInterval(playTimer);playTimer=null;renderSteps()}}
+
+  // ---------- pointer handling ----------
+  function pt(e){
+    var p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;
+    var q=p.matrixTransform(svg.getScreenCTM().inverse());
+    return [Math.max(14,Math.min(986,q.x)),Math.max(14,Math.min(646,q.y))];
+  }
+  function removeStroke(id){
+    var s=F().strokes;var i=s.findIndex(function(x){return x.id===id});
+    if(i>=0){pushUndo();s.splice(i,1);renderStrokes();persist()}
+  }
+  svg.addEventListener('pointerdown',function(e){
+    stopPlay();
+    var p=pt(e);
+    if(tool==='move'){
+      var n=e.target.closest('.item');
+      if(n){
+        var it=find(n.getAttribute('data-id'));
+        sel=it.id;drag={id:it.id,dx:it.x-p[0],dy:it.y-p[1],moved:false,pre:dump()};
+        svg.setPointerCapture(e.pointerId);svg.classList.add('dragging');
+      }else sel=null;
+      renderItems();renderPanel();
+    }else if(tool==='erase'){
+      erasing=true;svg.setPointerCapture(e.pointerId);
+      var h=e.target.closest('.hit');if(h)removeStroke(h.getAttribute('data-id'));
+    }else{
+      svg.setPointerCapture(e.pointerId);
+      drawing={id:nid(),pts:[p],dash:dashed,color:color,kind:tool,pre:dump()};
+      F().strokes.push(drawing);
+    }
+  });
+  svg.addEventListener('pointermove',function(e){
+    if(drag){
+      var p=pt(e),it=find(drag.id);if(!it)return;
+      it.x=p[0]+drag.dx;it.y=p[1]+drag.dy;drag.moved=true;renderItems();
+    }else if(drawing){
+      var p2=pt(e),pts=drawing.pts;
+      if(drawing.kind==='arrow'){drawing.pts=[pts[0],p2]}
+      else{var l=pts[pts.length-1];if(Math.hypot(p2[0]-l[0],p2[1]-l[1])>7)pts.push(p2)}
+      renderStrokes();
+    }else if(erasing){
+      var u=document.elementFromPoint(e.clientX,e.clientY);
+      var h=u&&u.closest&&u.closest('.hit');if(h)removeStroke(h.getAttribute('data-id'));
+    }
+  });
+  function endPointer(){
+    if(drag){
+      svg.classList.remove('dragging');
+      if(drag.moved){pushUndo(drag.pre);persist()}
+      drag=null;
+    }
+    if(drawing){
+      var s=drawing;drawing=null;
+      var len=s.pts.length>1?Math.hypot(s.pts[s.pts.length-1][0]-s.pts[0][0],s.pts[s.pts.length-1][1]-s.pts[0][1]):0;
+      if(len<14){var i=F().strokes.indexOf(s);if(i>=0)F().strokes.splice(i,1)}
+      else{pushUndo(s.pre);persist()}
+      renderStrokes();
+    }
+    erasing=false;
+  }
+  svg.addEventListener('pointerup',endPointer);
+  svg.addEventListener('pointercancel',endPointer);
+
+  // ---------- tools ----------
+  function setTool(t){
+    tool=t;
+    $('tMove').setAttribute('aria-pressed',t==='move');
+    $('tArrow').setAttribute('aria-pressed',t==='arrow');
+    $('tFree').setAttribute('aria-pressed',t==='free');
+    $('tErase').setAttribute('aria-pressed',t==='erase');
+    svg.setAttribute('class',(t==='move'?'t-move':t==='erase'?'t-erase':'t-draw')+' anim');
+    if(t!=='move')sel=null;
+    renderItems();renderStrokes();renderPanel();
+  }
+  $('tMove').onclick=function(){setTool('move')};
+  $('tArrow').onclick=function(){setTool('arrow')};
+  $('tFree').onclick=function(){setTool('free')};
+  $('tErase').onclick=function(){setTool('erase')};
+  $('sDash').onclick=function(){dashed=!dashed;$('sDash').setAttribute('aria-pressed',dashed)};
+  COLORS.forEach(function(c,i){
+    var b=document.createElement('button');b.className='sw';b.style.background=c;b.setAttribute('aria-label','Couleur '+(i+1));
+    b.setAttribute('aria-pressed',i===0);
+    b.onclick=function(){color=c;[].forEach.call($('swatches').children,function(x){x.setAttribute('aria-pressed',x===b)})};
+    $('swatches').appendChild(b);
+  });
+  $('undo').onclick=function(){
+    if(!undoStack.length)return;stopPlay();
+    state=JSON.parse(undoStack.pop());sel=null;fullRender();persist();
+  };
+  $('clearStrokes').onclick=function(){if(!F().strokes.length)return;pushUndo();F().strokes=[];renderStrokes();persist();renderPanel()};
+
+  // ---------- adding items ----------
+  var addCount=0;
+  function addItem(o){
+    pushUndo();
+    o.id=nid();o.x=150+(addCount%8)*100;o.y=58;addCount++;
+    F().items.push(o);sel=o.id;if(tool!=='move')setTool('move');
+    renderItems();renderPanel();persist();
+  }
+  $('addA').onclick=function(){addItem({type:'p',team:'a',label:''+(F().items.filter(function(i){return i.team==='a'}).length+1)})};
+  $('addB').onclick=function(){addItem({type:'p',team:'b',label:''+(F().items.filter(function(i){return i.team==='b'}).length+1)})};
+  $('addL').onclick=function(){addItem({type:'p',team:'l',label:'L'})};
+  $('addBall').onclick=function(){addItem({type:'ball'})};
+  $('addCone').onclick=function(){addItem({type:'cone'})};
+
+  // ---------- teams ----------
+  $('teamA').onclick=function(){teamSel='a';renderPanel()};
+  $('teamB').onclick=function(){teamSel='b';renderPanel()};
+  $('applyForm').onclick=function(){
+    var f=$('formation').value;pushUndo();
+    F().items.forEach(function(it){if(it.type==='p'&&it.team===teamSel&&it.slot){var p=posFor(it.team,it.slot,f);it.x=p[0];it.y=p[1]}});
+    renderItems();persist();renderPanel();
+  };
+  $('rotate').onclick=function(){
+    pushUndo();var f=$('formation').value;
+    F().items.forEach(function(it){if(it.type==='p'&&it.team===teamSel&&it.slot){it.slot=it.slot===1?6:it.slot-1;var p=posFor(it.team,it.slot,f);it.x=p[0];it.y=p[1]}});
+    renderItems();persist();renderPanel();
+  };
+  $('resetTeams').onclick=function(){
+    pushUndo();
+    var keep=F().items.filter(function(i){return !(i.type==='p'&&(i.team==='a'||i.team==='b'))});
+    var fresh=freshItems().filter(function(i){return i.type==='p'});
+    F().items=fresh.concat(keep);sel=null;renderItems();persist();renderPanel();
+  };
+
+  // ---------- selection ----------
+  $('lbl').addEventListener('input',function(){
+    var it=sel&&find(sel);if(it&&it.type==='p'){it.label=$('lbl').value.slice(0,4);renderItems();persist()}
+  });
+  $('lbl').addEventListener('focus',function(){var it=sel&&find(sel);if(it)pushUndo()});
+  function deleteSel(){
+    if(!sel)return;pushUndo();
+    F().items=F().items.filter(function(i){return i.id!==sel});sel=null;renderItems();renderPanel();persist();
+  }
+  $('del').onclick=deleteSel;
+  document.addEventListener('keydown',function(e){
+    var tag=(e.target.tagName||'').toLowerCase();
+    if(tag==='input'||tag==='select')return;
+    if((e.key==='Delete'||e.key==='Backspace')&&sel){e.preventDefault();deleteSel()}
+    if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();$('undo').click()}
+  });
+  $('zones').onchange=renderPanel;
+
+  // ---------- saved tactics ----------
+  function loadAll(){try{return JSON.parse(localStorage.getItem('volley-saved')||'{}')}catch(e){return {}}}
+  function storeAll(o){try{localStorage.setItem('volley-saved',JSON.stringify(o));return true}catch(e){return false}}
+  function say(m){$('saveMsg').textContent=m;clearTimeout(savedMsgTimer);savedMsgTimer=setTimeout(function(){$('saveMsg').textContent='Les tactiques restent dans ce navigateur.'},3500)}
+  function renderSaved(){
+    var all=loadAll(),ul=$('saved');ul.innerHTML='';
+    var names=Object.keys(all);
+    if(!names.length){var li=document.createElement('li');li.className='hint';li.style.margin='0';li.textContent='Aucune tactique enregistrée.';ul.appendChild(li);return}
+    names.forEach(function(n){
+      var li=document.createElement('li');
+      var s=document.createElement('span');s.className='name';s.textContent=n;s.title=n;
+      var lo=document.createElement('button');lo.textContent='Ouvrir';
+      lo.onclick=function(){stopPlay();pushUndo();state=JSON.parse(JSON.stringify(all[n]));state.cur=0;sel=null;fullRender();persist();say('« '+n+' » ouverte.')};
+      var de=document.createElement('button');de.textContent='Suppr.';de.className='danger';
+      de.onclick=function(){
+        if(de.dataset.arm){var a=loadAll();delete a[n];storeAll(a);renderSaved()}
+        else{de.dataset.arm='1';de.textContent='Confirmer';setTimeout(function(){if(de.isConnected){delete de.dataset.arm;de.textContent='Suppr.'}},3000)}
+      };
+      li.appendChild(s);li.appendChild(lo);li.appendChild(de);ul.appendChild(li);
+    });
+  }
+  $('save').onclick=function(){
+    var n=$('saveName').value.trim();
+    if(!n){say('Donnez un nom à la tactique.');$('saveName').focus();return}
+    var all=loadAll();all[n]=JSON.parse(dump());
+    if(storeAll(all)){say('« '+n+' » enregistrée.');renderSaved()}else say('Enregistrement impossible dans ce navigateur.');
+  };
+
+  // ---------- boot ----------
+  init();buildCourt();$('undo').disabled=true;fullRender();renderSaved();
+})();
+</script>
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
+</script>
+</body>
+</html>
