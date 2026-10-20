@@ -400,8 +400,13 @@ body.has-fs{overflow:hidden}
     if(s.id===selStroke)el('rect',{x:x-4,y:y-4,width:w+8,height:h+8,rx:14,fill:'none',stroke:'#ffffff','stroke-opacity':.6,'stroke-width':6},g);
     el('rect',{x:x,y:y,width:w,height:h,rx:12,fill:s.color,'fill-opacity':.2,stroke:s.color,'stroke-width':3,'stroke-dasharray':'12 8','stroke-opacity':.9},g);
     if(s.label){
-      var t=el('text',{x:x+w/2,y:s.ltop?y+Math.min(24,h/4):y+h/2,class:'zlabel','font-size':Math.max(16,Math.min(30,w/(s.ltop?4.5:6),h/3)),fill:s.color},g);
-      t.textContent=s.label;
+      // "Name · role": the name on the first line, the role smaller underneath
+      var parts=String(s.label).split(' · '),L0=parts[0],L1=parts[1]||'';
+      var f1=Math.max(13,Math.min(24,w/(Math.max(L0.length,L1.length*0.8,4)*0.6),h/(L1?4.2:3)));
+      if(!L1&&h<130)f1=Math.min(f1,15);
+      var ty=s.ltop?(L1?y+f1*0.95+4:y+f1*0.75+3):y+h/2-(L1?f1*0.5:0);
+      var t=el('text',{x:x+w/2,y:ty,class:'zlabel','font-size':f1,fill:s.color},g);t.textContent=L0;
+      if(L1){var t2=el('text',{x:x+w/2,y:ty+f1*1.05,class:'zlabel','font-size':Math.round(f1*0.78),fill:s.color},g);t2.textContent=L1}
     }
     el('rect',{class:'hit','data-id':s.id,x:x,y:y,width:w,height:h,fill:'transparent','pointer-events':(tool==='erase'||tool==='move')?'all':'none'},g);
     if(s.id===selStroke&&tool==='move'){
