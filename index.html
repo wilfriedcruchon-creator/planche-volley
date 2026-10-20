@@ -150,6 +150,7 @@ body.has-fs{overflow:hidden}
       <span class="sep"></span>
       <button id="undo">Annuler</button>
       <button id="clearStrokes" class="danger">Effacer les tracés</button>
+      <button id="swapSides" title="Les équipes changent de côté (joueurs, ballon et tracés)">⇄ Inverser les côtés</button>
       <button id="resetAll" class="danger" title="Repart d'un tableau vierge : joueurs en place, sans tracé, une seule étape">Nouveau tableau</button>
       <span class="sep"></span>
       <button id="fsBtn" aria-pressed="false" title="Agrandir le terrain sur tout l'écran">Plein écran</button>
@@ -259,7 +260,7 @@ body.has-fs{overflow:hidden}
     base:{4:[420,200],3:[420,330],2:[420,460],5:[240,200],6:[240,330],1:[240,460]},
     w:{5:[180,200],6:[165,330],1:[180,460],4:[320,265],3:[320,395],2:[440,470]}
   };
-  function posFor(team,slot,f){var p=FORM[f||'base'][slot];return team==='b'?[1000-p[0],660-p[1]]:[p[0],p[1]]}
+  function posFor(team,slot,f){var p=FORM[f||'base'][slot];var mirror=(team==='b')!==!!(state&&state.swapped);return mirror?[1000-p[0],660-p[1]]:[p[0],p[1]]}
 
   var COLORS=['#ffffff','#ffd23f','#7be0ff','#ff6b6b'];
   var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null;
@@ -724,6 +725,18 @@ body.has-fs{overflow:hidden}
     r.readAsText(f);this.value='';
   };
 
+  // ---------- swap sides ----------
+  // Point reflection of the whole board: every item and every stroke, in every step.
+  $('swapSides').onclick=function(){
+    stopPlay();pushUndo();
+    state.swapped=!state.swapped;
+    state.frames.forEach(function(fr){
+      fr.items.forEach(function(it){it.x=1000-it.x;it.y=660-it.y});
+      fr.strokes.forEach(function(st){st.pts=st.pts.map(function(q){return [1000-q[0],660-q[1]]})});
+    });
+    sel=null;fullRender();persist();
+  };
+
   // ---------- reset the whole board ----------
   var resetTimer=null;
   $('resetAll').onclick=function(){
@@ -735,6 +748,7 @@ body.has-fs{overflow:hidden}
     }
     clearTimeout(resetTimer);delete b.dataset.arm;b.textContent='Nouveau tableau';
     stopPlay();pushUndo();
+    if(state)state.swapped=false;
     state={frames:[{items:freshItems(),strokes:[]}],cur:0};sel=null;
     $('saveName').value='';fullRender();persist();
   };
