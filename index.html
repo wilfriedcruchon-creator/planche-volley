@@ -29,7 +29,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 :root{
   --bg:#0b0b0d; --panel:#151518; --ink:#f2f2f4; --muted:#9d9da6; --line:#2d2d34;
   --accent:#e10f1a; --accent-ink:#ffffff; --soft:#212126;
-  --team-a:#e10f1a; --team-b:#f0f0f4; --libero:#f2b705;
+  --team-a:#e10f1a; --team-b:#2f7de1; --libero:#f2b705;
   --ok:#4ade80; --err:#ff6b6b;
   --court:#2a2a30; --free:#131316; --mark:#ffffff;
   --display:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,sans-serif;
@@ -74,6 +74,8 @@ svg.anim .item{transition:transform .9s ease-in-out}
 svg.dragging .item{transition:none}
 svg.dragging .item{cursor:grabbing}
 .zlabel{font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:rgba(10,12,16,.85);stroke-width:5px;stroke-linejoin:round;pointer-events:none}
+.tlogo{height:20px;width:auto;max-width:30px;object-fit:contain;vertical-align:-5px;margin-right:6px}
+.teamname{font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;font-size:38px;fill:#fff;dominant-baseline:central;paint-order:stroke;stroke:rgba(0,0,0,.5);stroke-width:4px;stroke-linejoin:round;pointer-events:none}
 .btxt{font-family:var(--display);font-weight:800;fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .item .num{font-family:var(--display);font-weight:700;fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .ring{fill:none;stroke:#fff;stroke-width:3;stroke-dasharray:6 5}
@@ -179,8 +181,8 @@ body.has-fs{overflow:hidden}
     <div class="card">
       <h2>Ajouter</h2>
       <div class="row">
-        <button id="addA"><span class="dot" style="background:var(--team-a)"></span>Joueur A</button>
-        <button id="addB"><span class="dot" style="background:var(--team-b)"></span>Joueur B</button>
+        <button id="addA"><img class="tlogo" src="logo.png" alt="">Joueur COB</button>
+        <button id="addB"><img class="tlogo" src="crest-lhevb.png" alt="">Joueur LHEVB 2</button>
         <button id="addL"><span class="dot" style="background:var(--libero)"></span>Libéro</button>
         <button id="addBall"><svg width="20" height="20" viewBox="-20 -20 40 40" aria-hidden="true" style="vertical-align:-5px;margin-right:6px"><use href="#mikasa"/></svg>Ballon</button>
         <button id="addCone">Plot</button>
@@ -190,8 +192,8 @@ body.has-fs{overflow:hidden}
     <div class="card">
       <h2>Équipes</h2>
       <div class="row" role="group" aria-label="Équipe ciblée" style="margin-bottom:8px">
-        <button id="teamA" aria-pressed="true"><span class="dot" style="background:var(--team-a)"></span>Équipe A</button>
-        <button id="teamB" aria-pressed="false"><span class="dot" style="background:var(--team-b)"></span>Équipe B</button>
+        <button id="teamA" aria-pressed="true"><img class="tlogo" src="logo.png" alt="">COB</button>
+        <button id="teamB" aria-pressed="false"><img class="tlogo" src="crest-lhevb.png" alt="">LHEVB 2</button>
       </div>
       <div class="row" style="margin-bottom:8px">
         <select id="formation" class="grow" aria-label="Placement">
@@ -307,7 +309,8 @@ body.has-fs{overflow:hidden}
     el('circle',{r:26.5},el('clipPath',{id:'phClip'},el('defs',{},svg)));
     el('rect',{x:0,y:0,width:1000,height:660,fill:'var(--free)'},svg);
     el('rect',{x:100,y:130,width:800,height:400,fill:'var(--court)'},svg);
-    el('image',{href:'logo.png',x:355,y:164,width:290,height:332,opacity:.1,preserveAspectRatio:'xMidYMid meet','pointer-events':'none'},svg);
+    el('image',{id:'wmA',href:'logo.png',width:240,height:240,y:210,opacity:.11,preserveAspectRatio:'xMidYMid meet','pointer-events':'none'},svg);
+    el('image',{id:'wmB',href:'crest-lhevb.png',width:240,height:240,y:210,opacity:.16,preserveAspectRatio:'xMidYMid meet','pointer-events':'none'},svg);
     var g=el('g',{stroke:'var(--mark)','stroke-width':4,fill:'none','stroke-linecap':'square'},svg);
     el('rect',{x:100,y:130,width:800,height:400},g);
     el('line',{x1:500,y1:130,x2:500,y2:530},g);
@@ -320,6 +323,11 @@ body.has-fs{overflow:hidden}
     el('line',{x1:500,y1:112,x2:500,y2:548,stroke:'#f3f3f3','stroke-width':6,'stroke-dasharray':'3 3'},svg);
     el('circle',{cx:500,cy:112,r:7,fill:'#2b2f33'},svg);
     el('circle',{cx:500,cy:548,r:7,fill:'#2b2f33'},svg);
+    [['A','logo.png','COB'],['B','crest-lhevb.png','LHEVB 2']].forEach(function(t){
+      var hg=el('g',{id:'hd'+t[0],'pointer-events':'none'},svg);
+      el('image',{href:t[1],x:-4,y:-32,width:64,height:64,preserveAspectRatio:'xMidYMid meet'},hg);
+      var tx=el('text',{x:70,y:2,class:'teamname'},hg);tx.textContent=t[2];
+    });
     el('g',{id:'strokeLayer'},svg);
     el('g',{id:'itemLayer'},svg);
   }
@@ -357,11 +365,11 @@ body.has-fs{overflow:hidden}
       g.style.transform='translate('+it.x+'px,'+it.y+'px)';
       if(it.type==='p'){
         var ph=photoOf(it);
-        var bd=g.querySelector('.body');bd.setAttribute('fill',itemFill(it));bd.setAttribute('stroke',it.team==='b'?'#e10f1a':'#fff');
+        var bd=g.querySelector('.body');bd.setAttribute('fill',itemFill(it));bd.setAttribute('stroke','#fff');
         bd.setAttribute('r',ph?30:24);g.querySelector('.shadow').setAttribute('r',ph?32:26);
         var im=g.querySelector('.photo');im.style.display=ph?'':'none';
         if(ph&&im.getAttribute('href')!==ph)im.setAttribute('href',ph);
-        var t=g.querySelector('.num');t.textContent=it.label;t.style.fill=it.team==='a'?'#fff':'#111';
+        var t=g.querySelector('.num');t.textContent=it.label;t.style.fill=it.team==='l'?'#111':'#fff';
         t.setAttribute('font-size',it.label.length>2?16:it.label.length>1?24:28);
         t.style.display=ph?'none':'';
         var bgd=g.querySelector('.badge'),bt=g.querySelector('.btxt');
@@ -461,7 +469,16 @@ body.has-fs{overflow:hidden}
     $('undo').disabled=!undoStack.length;
     $('zoneLayer').style.display=$('zones').checked?'':'none';
   }
-  function fullRender(){renderItems();renderStrokes();renderSteps();renderPanel()}
+  // team crests and names follow the sides: COB is team A, LHEVB 2 is team B
+  function placeCrests(){
+    var ax=state.swapped?700:300,bx=1000-ax;
+    [['A',ax],['B',bx]].forEach(function(t){
+      var wm=$('wm'+t[0]),hd=$('hd'+t[0]);
+      if(wm)wm.setAttribute('x',t[1]-120);
+      if(hd)hd.setAttribute('transform','translate('+(t[1]-(t[0]==='A'?85:112))+',66)');
+    });
+  }
+  function fullRender(){placeCrests();renderItems();renderStrokes();renderSteps();renderPanel()}
 
   // ---------- play ----------
   function startPlay(){
@@ -618,7 +635,7 @@ body.has-fs{overflow:hidden}
   var addCount=0;
   function addItem(o){
     pushUndo();
-    o.id=nid();o.x=150+(addCount%8)*100;o.y=58;addCount++;
+    o.id=nid();o.x=150+(addCount%8)*100;o.y=598;addCount++;
     F().items.push(o);sel=o.id;if(tool!=='move')setTool('move');
     renderItems();renderPanel();persist();
   }
