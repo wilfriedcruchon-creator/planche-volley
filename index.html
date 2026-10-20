@@ -533,12 +533,14 @@ body.has-fs{overflow:hidden}
 
   // ---------- full screen ----------
   // Uses the browser Fullscreen API when it exists, and always a full-window layout as fallback.
+  var TOUCH=(navigator.maxTouchPoints||0)>0||'ontouchstart' in window;
   function setFull(on){
     var m=$('main');
     m.classList.toggle('fs',on);
     document.body.classList.toggle('has-fs',on);
     $('fsBtn').textContent=on?'Quitter le plein écran':'Plein écran';
     $('fsBtn').setAttribute('aria-pressed',on);
+    if(TOUCH)return;   // on tablets the native mode drops out while dragging; the full-window layout is enough
     try{
       var d=document,fsEl=d.fullscreenElement||d.webkitFullscreenElement;
       if(on&&!fsEl){var rq=m.requestFullscreen||m.webkitRequestFullscreen;if(rq){var r=rq.call(m);if(r&&r.catch)r.catch(function(){})}}
