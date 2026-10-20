@@ -3,58 +3,58 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b7a75">
+<meta name="theme-color" content="#0b0b0d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Planche Volley">
+<meta name="apple-mobile-web-app-title" content="Planche COB">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <style>
-:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark;background:#0b0b0d}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100vh}
 button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 </style>
-<title>Planche Tactique Volley</title>
+<title>Planche Tactique COB</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&family=Barlow:wght@400;500;600&display=swap">
 <style>
-/* Layout: toolbar above a full-width court, steps bar below it, side panel (adds, rotations, selection, saves) on the right; stacks on phones. */
+/* Layout: header with the club logo, toolbar above a full-width court, steps bar below, side panel on the right; stacks on phones.
+   Look: black, red and white from the C.O.B logo, deliberately dark in every theme. */
 :root{
-  --bg:#e8ecef; --panel:#ffffff; --ink:#14202b; --muted:#5a6a77; --line:#cfd8de;
-  --accent:#0b7a75; --accent-ink:#ffffff; --soft:#eef3f5;
-  --team-a:#2457c5; --team-b:#d23b2f; --libero:#e8a317;
-  --court:#d98b4a; --free:#2f6f84; --mark:#ffffff;
+  --bg:#0b0b0d; --panel:#151518; --ink:#f2f2f4; --muted:#9d9da6; --line:#2d2d34;
+  --accent:#e10f1a; --accent-ink:#ffffff; --soft:#212126;
+  --team-a:#e10f1a; --team-b:#f0f0f4; --libero:#f2b705;
+  --ok:#4ade80; --err:#ff6b6b;
+  --court:#2a2a30; --free:#131316; --mark:#ffffff;
   --display:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,sans-serif;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0f161c; --panel:#18222b; --ink:#e8eef2; --muted:#93a3b0; --line:#2b3a46;
-  --accent:#38c2b8; --accent-ink:#06211f; --soft:#1f2c36; --team-a:#5b8cf0; --team-b:#f0685c; color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0f161c; --panel:#18222b; --ink:#e8eef2; --muted:#93a3b0; --line:#2b3a46;
-  --accent:#38c2b8; --accent-ink:#06211f; --soft:#1f2c36; --team-a:#5b8cf0; --team-b:#f0685c; color-scheme:dark}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;
+body{background-color:var(--bg);background-image:radial-gradient(900px 480px at 6% -8%,rgba(225,15,26,.24),transparent 62%),radial-gradient(700px 420px at 100% 100%,rgba(225,15,26,.10),transparent 60%),repeating-linear-gradient(135deg,rgba(255,255,255,.02) 0 2px,transparent 2px 16px);color:var(--ink);font-family:var(--body);font-size:15px;
   padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 *{box-sizing:border-box}
-h1{font-family:var(--display);font-size:30px;line-height:1;margin:0;letter-spacing:.02em;text-transform:uppercase}
-h2{font-family:var(--display);font-size:15px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600}
-header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px;margin-bottom:14px}
-header p{margin:0;color:var(--muted)}
+h1{font-family:var(--display);font-weight:800;font-style:italic;font-size:40px;line-height:.95;margin:0;letter-spacing:.01em;text-transform:uppercase}
+h2{font-family:var(--display);font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600}
+header{display:flex;align-items:center;gap:16px;margin:0 auto 16px;max-width:1400px;padding-bottom:14px;border-bottom:1px solid var(--line);position:relative}
+header::after{content:'';position:absolute;left:0;bottom:-1px;width:min(260px,40%);height:3px;background:var(--accent)}
+header img{width:76px;height:auto;flex:none;filter:drop-shadow(0 4px 14px rgba(225,15,26,.35))}
+.club{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+header p{margin:6px 0 0;color:var(--muted)}
+@media (max-width:560px){header img{width:56px}h1{font-size:30px}header p{display:none}}
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:16px;align-items:start;max-width:1400px;margin:0 auto}
 @media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px}
 .stack{display:flex;flex-direction:column;gap:12px;min-width:0}
 .bar{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
 .sep{width:1px;align-self:stretch;background:var(--line);margin:0 4px}
 button,select,input[type=text]{font:inherit;color:var(--ink)}
-button{background:var(--soft);border:1px solid var(--line);border-radius:7px;padding:7px 11px;cursor:pointer;font-weight:500}
+button{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:7px 11px;cursor:pointer;font-weight:600}
 button:hover{border-color:var(--accent)}
 button:focus-visible,select:focus-visible,input:focus-visible,svg:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-button.danger:hover{border-color:var(--team-b);color:var(--team-b)}
+button.danger:hover{border-color:var(--err);color:var(--err)}
 button:disabled{opacity:.45;cursor:default}
 select,input[type=text]{background:var(--soft);border:1px solid var(--line);border-radius:7px;padding:7px 9px;min-width:0}
 .sw{width:26px;height:26px;padding:0;border-radius:50%;border:2px solid var(--line)}
@@ -72,7 +72,7 @@ svg.dragging .item{cursor:grabbing}
 .ring{fill:none;stroke:#fff;stroke-width:3;stroke-dasharray:6 5}
 .zone{font-family:var(--display);font-weight:700;font-size:64px;fill:#fff;opacity:.2;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .steps{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.chip{min-width:38px;font-family:var(--display);font-size:17px;font-weight:700;padding:5px 10px}
+.chip{min-width:38px;font-family:var(--display);font-size:18px;font-weight:800;font-style:italic;padding:5px 10px}
 .hint{color:var(--muted);font-size:13px;margin:8px 0 0}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row>*{min-width:0}
@@ -89,8 +89,8 @@ svg.hide-names .pname{display:none}
 .field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
 .field input{font-size:15px}
 .status{font-size:13px;margin:8px 0 0;color:var(--muted)}
-.status.ok{color:var(--accent)}
-.status.err{color:var(--team-b)}
+.status.ok{color:var(--ok)}
+.status.err{color:var(--err)}
 details.card summary{cursor:pointer;font-family:var(--display);font-size:15px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
 details.card[open] summary{margin-bottom:10px}
 /* Full screen: toolbar on top, court filling the middle, steps at the bottom */
@@ -106,8 +106,12 @@ body.has-fs{overflow:hidden}
 </head>
 <body>
 <header>
-  <h1>Planche tactique volley</h1>
-  <p>Placez vos joueurs, tracez les déplacements, enchaînez les étapes.</p>
+  <img src="logo.png" alt="Logo C.O.B Volleyball" width="76" height="87">
+  <div>
+    <p class="club">Les Cobras · C.O.B Volleyball</p>
+    <h1>Planche tactique</h1>
+    <p>Placez vos joueurs, tracez les déplacements, enchaînez les étapes.</p>
+  </div>
 </header>
 
 <div class="layout">
@@ -261,11 +265,12 @@ body.has-fs{overflow:hidden}
     svg.innerHTML='';
     el('rect',{x:0,y:0,width:1000,height:660,fill:'var(--free)'},svg);
     el('rect',{x:100,y:130,width:800,height:400,fill:'var(--court)'},svg);
+    el('image',{href:'logo.png',x:355,y:164,width:290,height:332,opacity:.1,preserveAspectRatio:'xMidYMid meet','pointer-events':'none'},svg);
     var g=el('g',{stroke:'var(--mark)','stroke-width':4,fill:'none','stroke-linecap':'square'},svg);
     el('rect',{x:100,y:130,width:800,height:400},g);
     el('line',{x1:500,y1:130,x2:500,y2:530},g);
-    el('line',{x1:367,y1:130,x2:367,y2:530,'stroke-width':3},g);
-    el('line',{x1:633,y1:130,x2:633,y2:530,'stroke-width':3},g);
+    el('line',{x1:367,y1:130,x2:367,y2:530,'stroke-width':3,stroke:'#e10f1a'},g);
+    el('line',{x1:633,y1:130,x2:633,y2:530,'stroke-width':3,stroke:'#e10f1a'},g);
     var zg=el('g',{id:'zoneLayer'},svg);
     for(var s=1;s<=6;s++){['a','b'].forEach(function(t){var p=posFor(t,s);var x=el('text',{x:p[0],y:p[1],class:'zone'},zg);x.textContent=s})}
     // net
@@ -289,7 +294,7 @@ body.has-fs{overflow:hidden}
     }else if(it.type==='ball'){
       el('circle',{r:17,fill:'rgba(0,0,0,.28)',cy:3},g);
       el('circle',{r:16,fill:'#fff',stroke:'#16202a','stroke-width':2},g);
-      el('path',{d:'M-16 0 C-6 -9 6 -9 16 0 M-11 -12 C-3 -3 -3 8 -6 15 M11 -12 C3 -3 3 8 6 15',fill:'none',stroke:'#2457c5','stroke-width':2.2},g);
+      el('path',{d:'M-16 0 C-6 -9 6 -9 16 0 M-11 -12 C-3 -3 -3 8 -6 15 M11 -12 C3 -3 3 8 6 15',fill:'none',stroke:'#e10f1a','stroke-width':2.2},g);
     }else{
       el('polygon',{points:'0,-20 17,14 -17,14',fill:'#ff7a1a',stroke:'#fff','stroke-width':3,'stroke-linejoin':'round'},g);
     }
@@ -304,8 +309,8 @@ body.has-fs{overflow:hidden}
       if(!g){g=nodes[it.id]=makeItemNode(it);layer.appendChild(g)}
       g.style.transform='translate('+it.x+'px,'+it.y+'px)';
       if(it.type==='p'){
-        g.querySelector('.body').setAttribute('fill',itemFill(it));
-        var t=g.querySelector('.num');t.textContent=it.label;
+        var bd=g.querySelector('.body');bd.setAttribute('fill',itemFill(it));bd.setAttribute('stroke',it.team==='b'?'#e10f1a':'#fff');
+        var t=g.querySelector('.num');t.textContent=it.label;t.style.fill=it.team==='a'?'#fff':'#111';
         t.setAttribute('font-size',it.label.length>2?16:it.label.length>1?24:28);
         g.querySelector('.pname').textContent=it.name||'';
       }
