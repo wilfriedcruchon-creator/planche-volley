@@ -14,6 +14,7 @@
 <style>
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark;background:#0b0b0d}
 html{-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
 body{margin:0;min-height:100vh}
 button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 </style>
@@ -64,6 +65,7 @@ svg#court{display:block;width:100%;height:auto;aspect-ratio:1000/660;max-width:1
 svg#court.t-move{cursor:default}
 svg#court.t-draw{cursor:crosshair}
 svg#court.t-erase{cursor:not-allowed}
+svg#court.t-move .hit{cursor:grab}
 .item{cursor:grab}
 svg.anim .item{transition:transform .9s ease-in-out}
 svg.dragging .item{transition:none}
@@ -203,7 +205,7 @@ body.has-fs{overflow:hidden}
 
     <div class="card" id="selCard">
       <h2>Sélection</h2>
-      <div id="selNone" class="hint" style="margin:0">Cliquez sur un joueur, le ballon ou un plot pour le sélectionner.</div>
+      <div id="selNone" class="hint" style="margin:0">Cliquez sur un joueur, le ballon, un plot ou un tracé pour le sélectionner et le déplacer.</div>
       <div id="selBox" hidden>
         <div id="playerFields" class="stack" style="gap:8px;margin-bottom:8px">
           <label class="field">Nom du joueur
@@ -263,7 +265,7 @@ body.has-fs{overflow:hidden}
   function posFor(team,slot,f){var p=FORM[f||'base'][slot];var mirror=(team==='b')!==!!(state&&state.swapped);return mirror?[1000-p[0],660-p[1]]:[p[0],p[1]]}
 
   var COLORS=['#ffffff','#ffd23f','#7be0ff','#ff6b6b'];
-  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='';
+  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='', selStroke=null, sDrag=null;
 
   function freshItems(){
     var items=[];
@@ -364,11 +366,12 @@ body.has-fs{overflow:hidden}
       var g=el('g',{},layer);
       var common={d:d,fill:'none','stroke-linecap':'round','stroke-linejoin':'round'};
       var dash=s.dash?{'stroke-dasharray':'2 11'}:{};
+      if(s.id===selStroke)el('path',Object.assign({},common,{stroke:'#ffffff','stroke-opacity':.5,'stroke-width':15}),g);
       el('path',Object.assign({},common,{stroke:'rgba(0,0,0,.35)','stroke-width':s.dash?9:8},dash),g);
       el('path',Object.assign({},common,{stroke:s.color,'stroke-width':s.dash?6:4.5},dash),g);
       var hp=arrowHead(s.pts);
       el('polygon',{points:hp,fill:s.color,stroke:'rgba(0,0,0,.35)','stroke-width':2,'stroke-linejoin':'round'},g);
-      el('path',{d:d,class:'hit','data-id':s.id,fill:'none',stroke:'transparent','stroke-width':22,'pointer-events':tool==='erase'?'stroke':'none'},g);
+      el('path',{d:d,class:'hit','data-id':s.id,fill:'none',stroke:'transparent','stroke-width':26,'pointer-events':(tool==='erase'||tool==='move')?'stroke':'none'},g);
     });
   }
   function renderSteps(){
@@ -391,7 +394,9 @@ body.has-fs{overflow:hidden}
   }
   function renderPanel(){
     var it=sel&&find(sel);
-    $('selNone').hidden=!!it;$('selBox').hidden=!it;
+    var so=!it&&selStroke&&F().strokes.some(function(x){return x.id===selStroke});
+    $('selNone').hidden=!!(it||so);$('selBox').hidden=!(it||so);
+    if(so)$('playerFields').hidden=true;
     if(it){
       $('playerFields').hidden=it.type!=='p';
       if(it.type==='p'&&document.activeElement!==$('lbl')&&document.activeElement!==$('pname')){$('lbl').value=it.label;$('pname').value=it.name||''}
@@ -432,10 +437,21 @@ body.has-fs{overflow:hidden}
       var n=e.target.closest('.item');
       if(n){
         var it=find(n.getAttribute('data-id'));
-        sel=it.id;drag={id:it.id,dx:it.x-p[0],dy:it.y-p[1],moved:false,pre:dump()};
+        sel=it.id;selStroke=null;drag={id:it.id,dx:it.x-p[0],dy:it.y-p[1],moved:false,pre:dump()};
         svg.setPointerCapture(e.pointerId);svg.classList.add('dragging');
-      }else sel=null;
-      renderItems();renderPanel();
+      }else{
+        var h=e.target.closest('.hit'),so=null;
+        sel=null;
+        if(h){
+          selStroke=h.getAttribute('data-id');
+          so=F().strokes.find(function(x){return x.id===selStroke});
+        }else selStroke=null;
+        if(so){
+          sDrag={id:so.id,start:p,orig:so.pts.map(function(q){return q.slice()}),moved:false,pre:dump()};
+          svg.setPointerCapture(e.pointerId);
+        }
+      }
+      renderItems();renderStrokes();renderPanel();
     }else if(tool==='erase'){
       erasing=true;svg.setPointerCapture(e.pointerId);
       var h=e.target.closest('.hit');if(h)removeStroke(h.getAttribute('data-id'));
@@ -447,7 +463,17 @@ body.has-fs{overflow:hidden}
     }
   });
   svg.addEventListener('pointermove',function(e){
-    if(drag){
+    if(sDrag){
+      var q0=pt(e),so2=F().strokes.find(function(x){return x.id===sDrag.id});
+      if(!so2)return;
+      var dx=q0[0]-sDrag.start[0],dy=q0[1]-sDrag.start[1];
+      var xs=sDrag.orig.map(function(a){return a[0]}),ys=sDrag.orig.map(function(a){return a[1]});
+      dx=Math.max(8-Math.min.apply(null,xs),Math.min(992-Math.max.apply(null,xs),dx));
+      dy=Math.max(8-Math.min.apply(null,ys),Math.min(652-Math.max.apply(null,ys),dy));
+      if(Math.abs(dx)+Math.abs(dy)>1)sDrag.moved=true;
+      so2.pts=sDrag.orig.map(function(a){return [a[0]+dx,a[1]+dy]});
+      renderStrokes();
+    }else if(drag){
       var p=pt(e),it=find(drag.id);if(!it)return;
       it.x=p[0]+drag.dx;it.y=p[1]+drag.dy;drag.moved=true;renderItems();
     }else if(drawing){
@@ -461,6 +487,7 @@ body.has-fs{overflow:hidden}
     }
   });
   function endPointer(){
+    if(sDrag){if(sDrag.moved){pushUndo(sDrag.pre);persist()}sDrag=null}
     if(drag){
       svg.classList.remove('dragging');
       if(drag.moved){pushUndo(drag.pre);persist()}
@@ -486,7 +513,7 @@ body.has-fs{overflow:hidden}
     $('tFree').setAttribute('aria-pressed',t==='free');
     $('tErase').setAttribute('aria-pressed',t==='erase');
     svg.setAttribute('class',(t==='move'?'t-move':t==='erase'?'t-erase':'t-draw')+' anim');
-    if(t!=='move')sel=null;
+    if(t!=='move'){sel=null;selStroke=null}
     renderItems();renderStrokes();renderPanel();
   }
   $('tMove').onclick=function(){setTool('move')};
@@ -551,7 +578,14 @@ body.has-fs{overflow:hidden}
   $('lbl').addEventListener('focus',undoOnFocus);
   $('pname').addEventListener('focus',undoOnFocus);
   function deleteSel(){
-    if(!sel)return;pushUndo();
+    if(!sel){
+      if(selStroke&&F().strokes.some(function(x){return x.id===selStroke})){
+        pushUndo();F().strokes=F().strokes.filter(function(x){return x.id!==selStroke});selStroke=null;
+        renderStrokes();renderPanel();persist();
+      }
+      return;
+    }
+    pushUndo();
     F().items=F().items.filter(function(i){return i.id!==sel});sel=null;renderItems();renderPanel();persist();
   }
   $('del').onclick=deleteSel;
@@ -559,7 +593,7 @@ body.has-fs{overflow:hidden}
     var tag=(e.target.tagName||'').toLowerCase();
     if(e.key==='Escape'&&$('main').classList.contains('fs')){setFull(false);return}
     if(tag==='input'||tag==='select')return;
-    if((e.key==='Delete'||e.key==='Backspace')&&sel){e.preventDefault();deleteSel()}
+    if((e.key==='Delete'||e.key==='Backspace')&&(sel||selStroke)){e.preventDefault();deleteSel()}
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();$('undo').click()}
   });
   $('zones').onchange=renderPanel;
