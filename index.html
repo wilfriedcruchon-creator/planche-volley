@@ -105,6 +105,29 @@ body.has-fs{overflow:hidden}
 
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <clipPath id="mkClip"><circle r="19"/></clipPath>
+    <radialGradient id="mkShade" cx=".35" cy=".3" r=".8">
+      <stop offset="0" stop-color="#fff" stop-opacity=".5"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".3"/>
+    </radialGradient>
+  </defs>
+  <!-- Mikasa-style ball: yellow panels, blue band with the lettering -->
+  <symbol id="mikasa" viewBox="-20 -20 40 40">
+    <g clip-path="url(#mkClip)">
+      <rect x="-20" y="-20" width="40" height="40" fill="#f7c600"/>
+      <path d="M-22 -9 C-9 -14 9 -14 22 -9 L22 3 C9 -2 -9 -2 -22 3 Z" fill="#0f4fa8"/>
+      <path d="M-22 -9 C-9 -14 9 -14 22 -9 M-22 3 C-9 -2 9 -2 22 3" fill="none" stroke="#0a2f6b" stroke-width=".8"/>
+      <path d="M-9 -17 C-4 -9 -4 10 -9 20 M9 -17 C4 -9 4 10 9 20 M-9 -2 C-5 6 -5 14 -9 20 M9 -2 C5 6 5 14 9 20" fill="none" stroke="#7a5a00" stroke-opacity=".55" stroke-width=".8"/>
+      <path d="M-18 7 C-8 11 8 11 18 7" fill="none" stroke="#0f4fa8" stroke-width="3.2"/>
+      <text x="0" y="-5" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="4.6" letter-spacing=".25" fill="#fff" text-anchor="middle">MIKASA</text>
+      <circle r="19" fill="url(#mkShade)"/>
+    </g>
+    <circle r="19" fill="none" stroke="#111" stroke-width="1.6"/>
+  </symbol>
+</svg>
 <header>
   <img src="logo.png" alt="Logo C.O.B Volleyball" width="76" height="87">
   <div>
@@ -150,7 +173,7 @@ body.has-fs{overflow:hidden}
         <button id="addA"><span class="dot" style="background:var(--team-a)"></span>Joueur A</button>
         <button id="addB"><span class="dot" style="background:var(--team-b)"></span>Joueur B</button>
         <button id="addL"><span class="dot" style="background:var(--libero)"></span>Libéro</button>
-        <button id="addBall">Ballon</button>
+        <button id="addBall"><svg width="20" height="20" viewBox="-20 -20 40 40" aria-hidden="true" style="vertical-align:-5px;margin-right:6px"><use href="#mikasa"/></svg>Ballon</button>
         <button id="addCone">Plot</button>
       </div>
     </div>
@@ -292,9 +315,9 @@ body.has-fs{overflow:hidden}
       el('text',{class:'num'},g);
       el('text',{class:'pname',y:47},g);
     }else if(it.type==='ball'){
-      el('circle',{r:17,fill:'rgba(0,0,0,.28)',cy:3},g);
-      el('circle',{r:16,fill:'#fff',stroke:'#16202a','stroke-width':2},g);
-      el('path',{d:'M-16 0 C-6 -9 6 -9 16 0 M-11 -12 C-3 -3 -3 8 -6 15 M11 -12 C3 -3 3 8 6 15',fill:'none',stroke:'#e10f1a','stroke-width':2.2},g);
+      el('circle',{r:26,fill:'rgba(0,0,0,.3)',cy:3},g);
+      var u=el('use',{x:-27,y:-27,width:54,height:54,'pointer-events':'all'},g);
+      u.setAttribute('href','#mikasa');
     }else{
       el('polygon',{points:'0,-20 17,14 -17,14',fill:'#ff7a1a',stroke:'#fff','stroke-width':3,'stroke-linejoin':'round'},g);
     }
@@ -315,7 +338,7 @@ body.has-fs{overflow:hidden}
         g.querySelector('.pname').textContent=it.name||'';
       }
       var ring=g.querySelector('.ring');
-      if(sel===it.id){if(!ring){el('circle',{class:'ring',r:it.type==='ball'?24:32},g)}}else if(ring)ring.remove();
+      if(sel===it.id){if(!ring){el('circle',{class:'ring',r:it.type==='ball'?33:32},g)}}else if(ring)ring.remove();
     });
     Object.keys(nodes).forEach(function(id){if(!alive[id]){nodes[id].remove();delete nodes[id]}});
     // keep dragged/selected on top
