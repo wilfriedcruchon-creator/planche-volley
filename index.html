@@ -73,6 +73,7 @@ svg#court .handle{cursor:pointer}
 svg.anim .item{transition:transform .9s ease-in-out}
 svg.dragging .item{transition:none}
 svg.dragging .item{cursor:grabbing}
+.btxt{font-family:var(--display);font-weight:800;fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .item .num{font-family:var(--display);font-weight:700;fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .ring{fill:none;stroke:#fff;stroke-width:3;stroke-dasharray:6 5}
 .zone{font-family:var(--display);font-weight:700;font-size:64px;fill:#fff;opacity:.2;text-anchor:middle;dominant-baseline:central;pointer-events:none}
@@ -268,7 +269,7 @@ body.has-fs{overflow:hidden}
   function posFor(team,slot,f){var p=FORM[f||'base'][slot];var mirror=(team==='b')!==!!(state&&state.swapped);return mirror?[1000-p[0],660-p[1]]:[p[0],p[1]]}
 
   var COLORS=['#ffffff','#ffd23f','#7be0ff','#ff6b6b'];
-  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='', selStroke=null, sDrag=null, eDrag=null;
+  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='', PLAYERS={}, selStroke=null, sDrag=null, eDrag=null;
 
   function freshItems(){
     var items=[];
@@ -286,6 +287,8 @@ body.has-fs{overflow:hidden}
     if(o&&o.frames)o.frames.forEach(function(fr){(fr.strokes||[]).forEach(function(st){delete st.pre})});
     return o;
   }
+  function refreshPlayers(){PLAYERS=loadStore().players||{};renderItems()}
+  function photoOf(it){var p=it.pid&&PLAYERS[it.pid];return p&&p.photo||''}
   function F(){return state.frames[state.cur]}
   function persist(){try{localStorage.setItem('volley-auto',JSON.stringify(state))}catch(e){}}
   function dump(){return JSON.stringify(state)}
@@ -296,6 +299,7 @@ body.has-fs{overflow:hidden}
   function el(name,attrs,parent){var e=document.createElementNS(NS,name);for(var k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
   function buildCourt(){
     svg.innerHTML='';
+    el('circle',{r:26.5},el('clipPath',{id:'phClip'},el('defs',{},svg)));
     el('rect',{x:0,y:0,width:1000,height:660,fill:'var(--free)'},svg);
     el('rect',{x:100,y:130,width:800,height:400,fill:'var(--court)'},svg);
     el('image',{href:'logo.png',x:355,y:164,width:290,height:332,opacity:.1,preserveAspectRatio:'xMidYMid meet','pointer-events':'none'},svg);
@@ -320,9 +324,14 @@ body.has-fs{overflow:hidden}
   function makeItemNode(it){
     var g=el('g',{class:'item','data-id':it.id});
     if(it.type==='p'){
-      el('circle',{r:26,fill:'rgba(0,0,0,.28)',cy:3},g);
+      el('circle',{class:'shadow',r:26,fill:'rgba(0,0,0,.28)',cy:3},g);
       el('circle',{class:'body',r:24,stroke:'#fff','stroke-width':3},g);
+      var im=el('image',{class:'photo',x:-27,y:-27,width:54,height:54,preserveAspectRatio:'xMidYMid slice','clip-path':'url(#phClip)','pointer-events':'none'},g);
+      im.style.display='none';
       el('text',{class:'num'},g);
+      var bg=el('g',{class:'badge'},g);bg.style.display='none';
+      el('circle',{cx:22,cy:-22,r:12,fill:'#0b0b0d',stroke:'#fff','stroke-width':2},bg);
+      el('text',{class:'btxt',x:22,y:-22},bg);
       el('text',{class:'pname',y:47},g);
     }else if(it.type==='ball'){
       el('circle',{r:26,fill:'rgba(0,0,0,.3)',cy:3},g);
@@ -342,13 +351,21 @@ body.has-fs{overflow:hidden}
       if(!g){g=nodes[it.id]=makeItemNode(it);layer.appendChild(g)}
       g.style.transform='translate('+it.x+'px,'+it.y+'px)';
       if(it.type==='p'){
+        var ph=photoOf(it);
         var bd=g.querySelector('.body');bd.setAttribute('fill',itemFill(it));bd.setAttribute('stroke',it.team==='b'?'#e10f1a':'#fff');
+        bd.setAttribute('r',ph?30:24);g.querySelector('.shadow').setAttribute('r',ph?32:26);
+        var im=g.querySelector('.photo');im.style.display=ph?'':'none';
+        if(ph&&im.getAttribute('href')!==ph)im.setAttribute('href',ph);
         var t=g.querySelector('.num');t.textContent=it.label;t.style.fill=it.team==='a'?'#fff':'#111';
         t.setAttribute('font-size',it.label.length>2?16:it.label.length>1?24:28);
-        g.querySelector('.pname').textContent=it.name||'';
+        t.style.display=ph?'none':'';
+        var bgd=g.querySelector('.badge'),bt=g.querySelector('.btxt');
+        bgd.style.display=(ph&&it.label)?'':'none';
+        if(ph&&it.label){bt.textContent=it.label;bt.setAttribute('font-size',it.label.length>1?11:13)}
+        var nm=g.querySelector('.pname');nm.textContent=it.name||'';nm.setAttribute('y',ph?54:47);
       }
       var ring=g.querySelector('.ring');
-      if(sel===it.id){if(!ring){el('circle',{class:'ring',r:it.type==='ball'?33:32},g)}}else if(ring)ring.remove();
+      if(sel===it.id){if(!ring)ring=el('circle',{class:'ring'},g);ring.setAttribute('r',it.type==='ball'?33:(photoOf(it)?38:32))}else if(ring)ring.remove();
     });
     Object.keys(nodes).forEach(function(id){if(!alive[id]){nodes[id].remove();delete nodes[id]}});
     // keep dragged/selected on top
@@ -658,11 +675,11 @@ body.has-fs{overflow:hidden}
   // Store shape: {tactics:{name:{state,updated}}, deleted:{name:timestamp}}
   var STORE_KEY='volley-saved', SYNC_TOKEN='volley-token', SYNC_GIST='volley-gist';
   var GIST_DESC='Planche volley - synchronisation', GIST_FILE='planche-volley.json';
-  function emptyStore(){return {tactics:{},deleted:{}}}
+  function emptyStore(){return {tactics:{},deleted:{},players:{}}}
   function loadStore(){
     var raw=null;try{raw=JSON.parse(localStorage.getItem(STORE_KEY)||'null')}catch(e){}
     if(!raw||typeof raw!=='object')return emptyStore();
-    if(raw.tactics)return {tactics:raw.tactics||{},deleted:raw.deleted||{}};
+    if(raw.tactics)return {tactics:raw.tactics||{},deleted:raw.deleted||{},players:raw.players||{}};
     var s=emptyStore();
     Object.keys(raw).forEach(function(n){if(raw[n]&&raw[n].frames)s.tactics[n]={state:raw[n],updated:Date.now()}});
     return s;
@@ -677,6 +694,10 @@ body.has-fs{overflow:hidden}
       var d=Math.max(a.deleted[n]||0,b.deleted[n]||0);
       if(t&&t.updated>d)out.tactics[n]=t;
       else if(d)out.deleted[n]=d;
+    });
+    [a,b].forEach(function(s2){
+      var pl=s2.players||{};
+      Object.keys(pl).forEach(function(k){var c=out.players[k];if(!c||(pl[k].updated||0)>(c.updated||0))out.players[k]=pl[k]});
     });
     return out;
   }
@@ -735,7 +756,7 @@ body.has-fs{overflow:hidden}
     var get=f.truncated?fetch(f.raw_url).then(function(r){return r.text()}):Promise.resolve(f.content);
     return get.then(function(t){
       var o=null;try{o=JSON.parse(t)}catch(e){}
-      return o&&o.tactics?{tactics:o.tactics,deleted:o.deleted||{}}:emptyStore();
+      return o&&o.tactics?{tactics:o.tactics,deleted:o.deleted||{},players:o.players||{}}:emptyStore();
     });
   }
   function doSync(){
@@ -747,7 +768,7 @@ body.has-fs{overflow:hidden}
       .then(readRemote)
       .then(function(remote){
         var local=loadStore(),merged=mergeStores(local,remote);
-        storeStore(merged);renderSaved();
+        storeStore(merged);refreshPlayers();renderSaved();
         if(JSON.stringify(merged)===JSON.stringify(remote))return;
         var files={};files[GIST_FILE]={content:JSON.stringify(merged)};
         return api('PATCH','/gists/'+gid,{files:files});
@@ -789,8 +810,8 @@ body.has-fs{overflow:hidden}
     r.onload=function(){
       var o=null;try{o=JSON.parse(r.result)}catch(e){}
       if(!o||!o.tactics){say('Ce fichier n’est pas une sauvegarde de tactiques.');return}
-      storeStore(mergeStores(loadStore(),{tactics:o.tactics,deleted:o.deleted||{}}));
-      renderSaved();say('Tactiques importées.');syncSoon();
+      storeStore(mergeStores(loadStore(),{tactics:o.tactics,deleted:o.deleted||{},players:o.players||{}}));
+      refreshPlayers();renderSaved();say('Tactiques importées.');syncSoon();
     };
     r.readAsText(f);this.value='';
   };
@@ -824,7 +845,7 @@ body.has-fs{overflow:hidden}
   };
 
   // ---------- boot ----------
-  init();buildCourt();$('undo').disabled=true;fullRender();renderSaved();
+  init();buildCourt();PLAYERS=loadStore().players||{};$('undo').disabled=true;fullRender();renderSaved();
   if(getTok()){$('token').value=getTok();$('syncCard').open=true;doSync()}
 })();
 </script>
