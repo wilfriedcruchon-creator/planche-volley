@@ -399,6 +399,12 @@ body.has-fs{overflow:hidden}
     var p1=[end[0]-L*Math.cos(a-W),end[1]-L*Math.sin(a-W)], p2=[end[0]-L*Math.cos(a+W),end[1]-L*Math.sin(a+W)];
     return end.join(',')+' '+p1.join(',')+' '+p2.join(',');
   }
+  // the zone touched last is drawn on top of the other zones
+  function bringToFront(st){
+    if(!st||st.kind!=='zone')return;
+    var a=F().strokes,i=a.indexOf(st);
+    if(i>=0&&i<a.length-1){a.splice(i,1);a.push(st)}
+  }
   function drawZone(s,layer){
     var a=s.pts[0],b=s.pts[1],x=Math.min(a[0],b[0]),y=Math.min(a[1],b[1]),w=Math.abs(a[0]-b[0]),h=Math.abs(a[1]-b[1]);
     var g=el('g',{},layer);
@@ -528,6 +534,7 @@ body.has-fs{overflow:hidden}
         var so0=F().strokes.find(function(x){return x.id===selStroke}),hd=e.target.closest('.handle');
         if(so0){
           eDrag={id:so0.id,end:+hd.getAttribute('data-end'),orig:so0.pts.map(function(q){return q.slice()}),moved:false,pre:dump()};
+          bringToFront(so0);
           svg.setPointerCapture(e.pointerId);
         }
       }else{
@@ -539,6 +546,7 @@ body.has-fs{overflow:hidden}
         }else selStroke=null;
         if(so){
           sDrag={id:so.id,start:p,orig:so.pts.map(function(q){return q.slice()}),moved:false,pre:dump()};
+          bringToFront(so);
           svg.setPointerCapture(e.pointerId);
         }
       }
