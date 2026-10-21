@@ -264,6 +264,7 @@ body.has-fs{overflow:hidden}
   </aside>
 </div>
 
+<script src="defaults.js"></script>
 <script>
 (function(){
   var NS='http://www.w3.org/2000/svg';
@@ -291,7 +292,11 @@ body.has-fs{overflow:hidden}
     var loaded=null;
     try{loaded=JSON.parse(localStorage.getItem('volley-auto')||'null')}catch(e){}
     if(loaded&&loaded.frames&&loaded.frames.length){state=cleanState(loaded);state.cur=Math.min(state.cur||0,state.frames.length-1)}
-    else state={frames:[{items:freshItems(),strokes:[]}],cur:0};
+    else{
+      var dt=window.COB_DEFAULTS&&window.COB_DEFAULTS.tactics,first=dt&&Object.keys(dt)[0];
+      state=first?cleanState(JSON.parse(JSON.stringify(dt[first].state))):{frames:[{items:freshItems(),strokes:[]}],cur:0};
+      state.cur=0;
+    }
   }
   function cleanState(o){
     if(o&&o.frames)o.frames.forEach(function(fr){(fr.strokes||[]).forEach(function(st){delete st.pre})});
@@ -367,21 +372,21 @@ body.has-fs{overflow:hidden}
       if(!g){g=nodes[it.id]=makeItemNode(it);layer.appendChild(g)}
       g.style.transform='translate('+it.x+'px,'+it.y+'px)';
       if(it.type==='p'){
-        var ph=photoOf(it);
+        var ph=photoOf(it),ini=(!ph&&it.pid&&it.name)?it.name.charAt(0).toUpperCase():'';
         var bd=g.querySelector('.body');bd.setAttribute('fill',itemFill(it));bd.setAttribute('stroke','#fff');
-        bd.setAttribute('r',ph?30:24);g.querySelector('.shadow').setAttribute('r',ph?32:26);
+        bd.setAttribute('r',(ph||ini)?30:24);g.querySelector('.shadow').setAttribute('r',(ph||ini)?32:26);
         var im=g.querySelector('.photo');im.style.display=ph?'':'none';
         if(ph&&im.getAttribute('href')!==ph)im.setAttribute('href',ph);
-        var t=g.querySelector('.num');t.textContent=it.label;t.style.fill=it.team==='l'?'#111':'#fff';
-        t.setAttribute('font-size',it.label.length>2?16:it.label.length>1?24:28);
+        var t=g.querySelector('.num');t.textContent=ini||it.label;t.style.fill=it.team==='l'?'#111':'#fff';
+        t.setAttribute('font-size',ini?28:(it.label.length>2?16:it.label.length>1?24:28));
         t.style.display=ph?'none':'';
         var bgd=g.querySelector('.badge'),bt=g.querySelector('.btxt');
-        bgd.style.display=(ph&&it.label)?'':'none';
-        if(ph&&it.label){bt.textContent=it.label;bt.setAttribute('font-size',it.label.length>1?11:13)}
-        var nm=g.querySelector('.pname');nm.textContent=it.name||'';nm.setAttribute('y',ph?54:47);
+        bgd.style.display=((ph||ini)&&it.label)?'':'none';
+        if((ph||ini)&&it.label){bt.textContent=it.label;bt.setAttribute('font-size',it.label.length>1?11:13)}
+        var nm=g.querySelector('.pname');nm.textContent=it.name||'';nm.setAttribute('y',(ph||ini)?54:47);
       }
       var ring=g.querySelector('.ring');
-      if(sel===it.id){if(!ring)ring=el('circle',{class:'ring'},g);ring.setAttribute('r',it.type==='ball'?33:(photoOf(it)?38:32))}else if(ring)ring.remove();
+      if(sel===it.id){if(!ring)ring=el('circle',{class:'ring'},g);ring.setAttribute('r',it.type==='ball'?33:((photoOf(it)||(it.pid&&it.name))?38:32))}else if(ring)ring.remove();
     });
     Object.keys(nodes).forEach(function(id){if(!alive[id]){nodes[id].remove();delete nodes[id]}});
     // keep dragged/selected on top
@@ -910,8 +915,22 @@ body.has-fs{overflow:hidden}
     $('saveName').value='';fullRender();persist();
   };
 
+  // ---------- built-in tactics (names and positions, no photos) ----------
+  function seedDefaults(){
+    var D=window.COB_DEFAULTS;if(!D||!D.tactics)return;
+    var st=loadStore(),changed=false;
+    Object.keys(D.tactics).forEach(function(n){
+      var cur=st.tactics[n];
+      if(st.deleted[n])return;
+      if(!cur||(cur.updated<=1&&cur.dv!==D.version)){
+        st.tactics[n]={state:D.tactics[n].state,updated:1,dv:D.version};changed=true;
+      }
+    });
+    if(changed)storeStore(st);
+  }
+
   // ---------- boot ----------
-  init();buildCourt();PLAYERS=loadStore().players||{};$('undo').disabled=true;fullRender();renderSaved();
+  init();seedDefaults();buildCourt();PLAYERS=loadStore().players||{};$('undo').disabled=true;fullRender();renderSaved();
   if(getTok()){$('token').value=getTok();$('syncCard').open=true;doSync()}
 })();
 </script>
