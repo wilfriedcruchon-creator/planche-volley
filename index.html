@@ -104,12 +104,14 @@ details.card summary{cursor:pointer;font-family:var(--display);font-size:15px;le
 details.card[open] summary{margin-bottom:10px}
 /* Full screen: toolbar on top, court filling the middle, steps at the bottom */
 body.has-fs{overflow:hidden}
-#main.fs{position:fixed;inset:0;z-index:100;background:var(--bg);flex-direction:column;gap:8px;max-width:none;
-  padding:max(8px,env(safe-area-inset-top,0px)) max(8px,env(safe-area-inset-right,0px)) max(8px,env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
-#main.fs .board{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
-#main.fs svg#court{width:100%;height:100%;aspect-ratio:auto}
-#main.fs .steps+.hint{display:none}
-#main.fs .card{padding:8px}
+#main.fs{position:fixed;inset:0;z-index:100;background:var(--bg);flex-direction:column;gap:2px;max-width:none;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+#main.fs .board{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:0;background:transparent}
+#main.fs svg#court{width:100%;height:100%;aspect-ratio:auto;border-radius:0}
+#main.fs .card{padding:4px 8px;border-radius:0;border-left:0;border-right:0}
+#main.fs h2,#main.fs .field,#main.fs .hint{display:none}
+/* full screen: no club logos or names, the court fills the screen */
+body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none}
 </style>
 
 </head>
@@ -732,6 +734,7 @@ body.has-fs{overflow:hidden}
   function setFull(on){
     var m=$('main');
     m.classList.toggle('fs',on);
+    svg.setAttribute('viewBox',on?'60 108 880 444':'0 0 1000 660');
     document.body.classList.toggle('has-fs',on);
     $('fsBtn').textContent=on?'Quitter le plein écran':'Plein écran';
     $('fsBtn').setAttribute('aria-pressed',on);
