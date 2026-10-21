@@ -355,8 +355,8 @@ body.has-fs{overflow:hidden}
       el('text',{class:'btxt',x:22,y:-22},bg);
       el('text',{class:'pname',y:47},g);
     }else if(it.type==='ball'){
-      el('circle',{r:26,fill:'rgba(0,0,0,.3)',cy:3},g);
-      var u=el('use',{x:-27,y:-27,width:54,height:54,'pointer-events':'all'},g);
+      el('circle',{r:20,fill:'rgba(0,0,0,.3)',cy:3},g);
+      var u=el('use',{x:-21,y:-21,width:42,height:42,'pointer-events':'all'},g);
       u.setAttribute('href','#mikasa');
     }else{
       el('polygon',{points:'0,-20 17,14 -17,14',fill:'#ff7a1a',stroke:'#fff','stroke-width':3,'stroke-linejoin':'round'},g);
@@ -386,7 +386,7 @@ body.has-fs{overflow:hidden}
         var nm=g.querySelector('.pname');nm.textContent=it.name||'';nm.setAttribute('y',(ph||ini)?54:47);
       }
       var ring=g.querySelector('.ring');
-      if(sel===it.id){if(!ring)ring=el('circle',{class:'ring'},g);ring.setAttribute('r',it.type==='ball'?33:((photoOf(it)||(it.pid&&it.name))?38:32))}else if(ring)ring.remove();
+      if(sel===it.id){if(!ring)ring=el('circle',{class:'ring'},g);ring.setAttribute('r',it.type==='ball'?27:((photoOf(it)||(it.pid&&it.name))?38:32))}else if(ring)ring.remove();
     });
     Object.keys(nodes).forEach(function(id){if(!alive[id]){nodes[id].remove();delete nodes[id]}});
     // keep dragged/selected on top
