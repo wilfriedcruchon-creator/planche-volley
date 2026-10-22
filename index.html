@@ -389,7 +389,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   function refreshPlayers(){setPlayers(loadStore().players);renderItems()}
   function playerOf(it){
     if(it.pid&&PLAYERS[it.pid])return PLAYERS[it.pid];
-    if(it.type==='p'&&it.team==='a'&&it.name)return BYNAME[normName(it.name)]||null;
+    if(it.type==='p'&&(it.team==='a'||it.team==='l')&&it.name)return BYNAME[normName(it.name)]||null;   // COB players and the libero
     return null;
   }
   function photoOf(it){var p=playerOf(it);return p&&p.photo||''}
