@@ -316,7 +316,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
 
     <details class="card" id="syncCard">
       <summary>Synchronisation PC / tablette</summary>
-      <p class="hint" style="margin:0 0 10px">Tous vos matchs, tactiques et tableaux sont copiés dans un Gist privé de votre compte GitHub, puis récupérés sur vos autres appareils. Entrez le même jeton sur chaque appareil.</p>
+      <p class="hint" style="margin:0 0 10px"><b>Avec le jeton</b> : tous les matchs, tactiques et tableaux sont copiés dans un Gist privé de votre compte GitHub et récupérés sur vos autres appareils. Vos modifications sont partagées.<span id="readNote" hidden> <b>Sans jeton</b> : vous recevez automatiquement les mises à jour de l’équipe, mais vos modifications restent sur cet appareil.</span></p>
       <label class="field">Jeton GitHub (droit « gist » uniquement)
         <input type="text" id="token" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ghp_…" style="-webkit-text-security:disc">
       </label>
@@ -324,6 +324,9 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       <div class="row">
         <button id="syncNow" class="primary grow">Synchroniser</button>
         <button id="syncOff">Déconnecter</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="refreshNow" class="grow" title="Récupère les dernières mises à jour de l'équipe" hidden>Actualiser</button>
       </div>
       <p class="status" id="syncMsg" role="status">Non connecté.</p>
       <div class="row" style="margin-top:10px">
@@ -898,7 +901,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     var out=emptyStore();
     out.library=mergeBag(a.library,b.library);
     [a,b].forEach(function(x){
-      Object.keys(x.players).forEach(function(k){var c=out.players[k];if(!c||(x.players[k].updated||0)>(c.updated||0))out.players[k]=x.players[k]});
+      Object.keys(x.players).forEach(function(k){var c=out.players[k],n=x.players[k];if(!c||(n.updated||0)>(c.updated||0)||((n.updated||0)===(c.updated||0)&&!c.photo&&n.photo))out.players[k]=n});
     });
     var ids={};
     [a,b].forEach(function(x){Object.keys(x.matches).forEach(function(i){ids[i]=1});Object.keys(x.deletedMatches).forEach(function(i){ids[i]=1})});
@@ -1106,7 +1109,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   $('saveModel').onclick=function(){saveTactic(true)};
 
   // ---------- sync through a private GitHub Gist ----------
-  var syncing=false, syncTimer=null;
+  var syncing=false, syncTimer=null, lastMerged=null;
   function syncSay(m,kind){var p=$('syncMsg');p.textContent=m;p.className='status'+(kind?' '+kind:'')}
   function getTok(){try{return localStorage.getItem(SYNC_TOKEN)||''}catch(e){return ''}}
   function api(method,path,body){
@@ -1161,12 +1164,13 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     return ensureGist().then(function(id){gid=id;return api('GET','/gists/'+id)})
       .then(readRemote)
       .then(function(remote){
-        var local=loadStore(),merged=mergeStores(local,remote);
+        var local=loadStore(),merged=mergeStores(local,remote);lastMerged=merged;
         storeStore(merged);refreshPlayers();renderSaved();renderMatchUi();adoptRemoteBoard(merged);
         if(JSON.stringify(merged)===JSON.stringify(remote))return;
         var files={};files[GIST_FILE]={content:JSON.stringify(merged)};
         return api('PATCH','/gists/'+gid,{files:files});
       })
+      .then(function(){return publishPublic(lastMerged)})
       .then(function(){
         var t=new Date();syncSay('Synchronisé à '+t.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'.','ok');
       })
@@ -1186,11 +1190,50 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   };
   $('syncOff').onclick=function(){
     try{localStorage.removeItem(SYNC_TOKEN);localStorage.removeItem(SYNC_GIST)}catch(e){}
-    $('token').value='';syncSay('Non connecté. Vos données restent sur cet appareil.');
+    $('token').value='';syncSay(pubId()?'Sans jeton : les mises à jour de l’équipe arrivent automatiquement, vos modifications restent sur cet appareil.':'Non connecté. Vos données restent sur cet appareil.');readSoon();
   };
-  document.addEventListener('visibilitychange',function(){if(document.hidden)flushBoard();else syncSoon()});
+  document.addEventListener('visibilitychange',function(){if(document.hidden)flushBoard();else{syncSoon();readSoon()}});
   window.addEventListener('pagehide',flushBoard);
-  window.addEventListener('online',function(){syncSoon()});
+  window.addEventListener('online',function(){syncSoon();readSoon()});
+
+  // ---------- shared copy, readable by everybody (no photos) ----------
+  // Token holders publish it after each sync. Everybody else only reads it: they receive the team's updates,
+  // and what they change stays on their own device.
+  var PUB_FILE='planche-volley-public.json', PUB_HASH='volley-pubhash', readBusy=false, lastRead=0;
+  function pubId(){var D=window.COB_DEFAULTS;return (D&&D.publicGist)||''}
+  function publicCopy(st){
+    var c=clone(st);
+    Object.keys(c.players).forEach(function(k){delete c.players[k].photo});
+    return c;
+  }
+  function strHash(t){var h=5381,i;for(i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return String(h)+':'+t.length}
+  function publishPublic(merged){
+    var id=pubId();if(!id||!merged||!getTok())return Promise.resolve();
+    var txt=JSON.stringify(publicCopy(merged)),h=strHash(txt),prev='';
+    try{prev=localStorage.getItem(PUB_HASH)||''}catch(e){}
+    if(prev===h)return Promise.resolve();
+    var files={};files[PUB_FILE]={content:txt};
+    return api('PATCH','/gists/'+id,{files:files}).then(function(){try{localStorage.setItem(PUB_HASH,h)}catch(e){}}).catch(function(){});
+  }
+  function doReadSync(){
+    var id=pubId();
+    if(!id||getTok()||readBusy)return Promise.resolve();
+    readBusy=true;lastRead=Date.now();
+    return fetch('https://api.github.com/gists/'+id,{headers:{'Accept':'application/vnd.github+json'}})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+      .then(function(g){return readGistFile(g,PUB_FILE)})
+      .then(function(remote){
+        if(!remote)throw new Error('EMPTY');
+        flushBoard();
+        var merged=mergeStores(loadStore(),remote);
+        storeStore(merged);refreshPlayers();renderSaved();renderMatchUi();adoptRemoteBoard(merged);
+        var t=new Date();syncSay('Mises à jour de l’équipe reçues à '+t.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'.','ok');
+      })
+      .catch(function(){syncSay('Mises à jour de l’équipe indisponibles pour le moment. Vos données restent sur cet appareil.','err')})
+      .then(function(){readBusy=false});
+  }
+  function readSoon(){if(getTok()||!pubId())return;if(Date.now()-lastRead<60000)return;setTimeout(doReadSync,300)}
+  $('refreshNow').onclick=function(){if(getTok())$('syncNow').click();else{lastRead=0;doReadSync()}};
 
   // ---------- file export / import ----------
   $('exportBtn').onclick=function(){
@@ -1283,7 +1326,8 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   loadBoardFromMatch(loadStore());
   buildCourt();setPlayers(loadStore().players);
   fillLogoSelect();$('undo').disabled=true;fullRender();renderSaved();renderMatchUi();
-  if(getTok()){$('token').value=getTok();$('syncCard').open=true;doSync()}
+  $('readNote').hidden=!pubId();$('refreshNow').hidden=!pubId();
+  if(getTok()){$('token').value=getTok();$('syncCard').open=true;doSync()}else{if(pubId())syncSay('Sans jeton : les mises à jour de l’équipe arrivent automatiquement.');doReadSync()}
 })();
 </script>
 <script>
