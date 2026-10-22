@@ -76,6 +76,19 @@ svg.dragging .item{cursor:grabbing}
 .zlabel{font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:rgba(10,12,16,.85);stroke-width:5px;stroke-linejoin:round;pointer-events:none}
 .tlogo{height:20px;width:auto;max-width:30px;object-fit:contain;vertical-align:-5px;margin-right:6px}
 .teamname{font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;font-size:38px;fill:#fff;dominant-baseline:central;paint-order:stroke;stroke:rgba(0,0,0,.5);stroke-width:4px;stroke-linejoin:round;pointer-events:none}
+.matchbar{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
+.matchbar label{font-family:var(--display);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:13px;color:var(--muted)}
+.matchbar select{min-width:0;max-width:100%;font-weight:600;padding:9px 10px;font-size:15px}
+@media (max-width:700px){header{flex-wrap:wrap}.matchbar{margin-left:0;width:100%}.matchbar select{flex:1}}
+.mtitle{font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;font-size:24px;line-height:1.05;margin:0 0 4px}
+.mline{color:var(--muted);font-size:14px;margin:0 0 2px}
+.mresult{font-weight:600;margin:2px 0 0}
+h3.sub{font-family:var(--display);font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:14px 0 0;font-weight:600}
+.mform{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.mform .two{display:grid;grid-template-columns:1.25fr 1fr;gap:8px}
+.mform .field,.mform .two>*{min-width:0}
+.mform input,.mform select{width:100%;min-width:0;font-size:14px}
+.mform input[type=date]{color-scheme:dark}
 .btxt{font-family:var(--display);font-weight:800;fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .item .num{font-family:var(--display);font-weight:700;fill:#fff;text-anchor:middle;dominant-baseline:central;pointer-events:none}
 .ring{fill:none;stroke:#fff;stroke-width:3;stroke-dasharray:6 5}
@@ -146,6 +159,10 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     <h1>Planche tactique</h1>
     <p>Placez vos joueurs, tracez les déplacements, enchaînez les étapes.</p>
   </div>
+  <div class="matchbar">
+    <label for="matchSel">Match</label>
+    <select id="matchSel" aria-label="Choisir le match"></select>
+  </div>
 </header>
 
 <div class="layout">
@@ -183,11 +200,56 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   </div>
 
   <aside class="stack">
+    <div class="card" id="matchCard">
+      <h2>Match</h2>
+      <div id="matchInfo">
+        <p class="mtitle" id="mTitle"></p>
+        <p class="mline" id="mLine"></p>
+        <p class="mline mresult" id="mResult"></p>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="matchEditBtn">Modifier</button>
+        <button id="matchNew" class="primary">＋ Nouveau match</button>
+      </div>
+      <div class="mform" id="matchForm" hidden>
+        <label class="field">Adversaire
+          <input type="text" id="mfOpp" maxlength="30" autocomplete="off" placeholder="ex. SAFRAN 2">
+        </label>
+        <label class="field">Logo de l'adversaire
+          <select id="mfLogo"></select>
+        </label>
+        <div class="two">
+          <label class="field">Date
+            <input type="date" id="mfDate">
+          </label>
+          <label class="field">Heure
+            <input type="text" id="mfTime" maxlength="8" autocomplete="off" placeholder="20h30">
+          </label>
+        </div>
+        <div class="two">
+          <label class="field">Lieu
+            <select id="mfVenue"><option value="dom">À domicile</option><option value="ext">À l'extérieur</option></select>
+          </label>
+          <label class="field">Journée
+            <input type="text" id="mfRound" maxlength="8" autocomplete="off" placeholder="J3">
+          </label>
+        </div>
+        <label class="field">Résultat (sets, COB en premier)
+          <input type="text" id="mfResult" maxlength="12" autocomplete="off" placeholder="ex. 3-1">
+        </label>
+        <div class="row">
+          <button id="mfSave" class="primary grow">Enregistrer le match</button>
+          <button id="mfCancel">Annuler</button>
+        </div>
+        <button id="mfDelete" class="danger">Supprimer ce match</button>
+      </div>
+    </div>
+
     <div class="card">
       <h2>Ajouter</h2>
       <div class="row">
         <button id="addA"><img class="tlogo" src="logo.png" alt="">Joueur COB</button>
-        <button id="addB"><img class="tlogo" src="crest-lhevb.png" alt="">Joueur LHEVB 2</button>
+        <button id="addB"><span class="dot" style="background:var(--team-b)"></span>Joueur adverse</button>
         <button id="addL"><span class="dot" style="background:var(--libero)"></span>Libéro</button>
         <button id="addBall"><svg width="20" height="20" viewBox="-20 -20 40 40" aria-hidden="true" style="vertical-align:-5px;margin-right:6px"><use href="#mikasa"/></svg>Ballon</button>
         <button id="addCone">Plot</button>
@@ -198,7 +260,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       <h2>Équipes</h2>
       <div class="row" role="group" aria-label="Équipe ciblée" style="margin-bottom:8px">
         <button id="teamA" aria-pressed="true"><img class="tlogo" src="logo.png" alt="">COB</button>
-        <button id="teamB" aria-pressed="false"><img class="tlogo" src="crest-lhevb.png" alt="">LHEVB 2</button>
+        <button id="teamB" aria-pressed="false"><span class="dot" style="background:var(--team-b)"></span>Adversaire</button>
       </div>
       <div class="row" style="margin-bottom:8px">
         <select id="formation" class="grow" aria-label="Placement">
@@ -241,13 +303,19 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
         <input type="text" id="saveName" class="grow" maxlength="40" aria-label="Nom de la tactique" placeholder="Nom, ex. Réception adverse">
         <button id="save" class="primary">Enregistrer</button>
       </div>
+      <div class="row" style="margin-top:8px">
+        <button id="saveModel" class="grow" title="Garde cette tactique pour tous les matchs">Enregistrer comme modèle</button>
+      </div>
+      <h3 class="sub" id="subMatch">Ce match</h3>
       <ul class="saved" id="saved"></ul>
+      <h3 class="sub">Modèles du COB (tous les matchs)</h3>
+      <ul class="saved" id="savedLib"></ul>
       <p class="hint" id="saveMsg">Les tactiques sont gardées sur cet appareil.</p>
     </div>
 
     <details class="card" id="syncCard">
       <summary>Synchronisation PC / tablette</summary>
-      <p class="hint" style="margin:0 0 10px">Vos tactiques sont copiées dans un Gist privé de votre compte GitHub, puis récupérées sur vos autres appareils. Entrez le même jeton sur chaque appareil.</p>
+      <p class="hint" style="margin:0 0 10px">Tous vos matchs, tactiques et tableaux sont copiés dans un Gist privé de votre compte GitHub, puis récupérés sur vos autres appareils. Entrez le même jeton sur chaque appareil.</p>
       <label class="field">Jeton GitHub (droit « gist » uniquement)
         <input type="text" id="token" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ghp_…" style="-webkit-text-security:disc">
       </label>
@@ -270,6 +338,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
 <script>
 (function(){
   var NS='http://www.w3.org/2000/svg';
+  var BLANK='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
   var svg=document.getElementById('court');
   var $=function(id){return document.getElementById(id)};
   var uid=0; function nid(){uid++;return 'i'+Date.now().toString(36)+uid}
@@ -282,7 +351,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   function posFor(team,slot,f){var p=FORM[f||'base'][slot];var mirror=(team==='b')!==!!(state&&state.swapped);return mirror?[1000-p[0],660-p[1]]:[p[0],p[1]]}
 
   var COLORS=['#ffffff','#ffd23f','#7be0ff','#ff6b6b'];
-  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='', PLAYERS={}, selStroke=null, sDrag=null, eDrag=null;
+  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='', PLAYERS={}, boardDirty=false, commitTimer=null, lastBoardUpdated=0, curMatch=null, selStroke=null, sDrag=null, eDrag=null;
 
   function freshItems(){
     var items=[];
@@ -290,15 +359,12 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     items.push({id:nid(),type:'ball',x:70,y:500});
     return items;
   }
-  function init(){
-    var loaded=null;
-    try{loaded=JSON.parse(localStorage.getItem('volley-auto')||'null')}catch(e){}
-    if(loaded&&loaded.frames&&loaded.frames.length){state=cleanState(loaded);state.cur=Math.min(state.cur||0,state.frames.length-1)}
-    else{
-      var dt=window.COB_DEFAULTS&&window.COB_DEFAULTS.tactics,first=dt&&Object.keys(dt)[0];
-      state=first?cleanState(JSON.parse(JSON.stringify(dt[first].state))):{frames:[{items:freshItems(),strokes:[]}],cur:0};
-      state.cur=0;
-    }
+  function clone(o){return JSON.parse(JSON.stringify(o))}
+  // The board a match opens with when nothing has been saved for it: the first model (rotation 1)
+  function defaultBoard(){
+    var st=loadStore(),names=Object.keys(st.library.tactics).sort(),first=names[0];
+    var d=first?clone(st.library.tactics[first].state):{frames:[{items:freshItems(),strokes:[]}],cur:0};
+    d.cur=0;return cleanState(d);
   }
   function cleanState(o){
     if(o&&o.frames)o.frames.forEach(function(fr){(fr.strokes||[]).forEach(function(st){delete st.pre})});
@@ -307,7 +373,8 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   function refreshPlayers(){PLAYERS=loadStore().players||{};renderItems()}
   function photoOf(it){var p=it.pid&&PLAYERS[it.pid];return p&&p.photo||''}
   function F(){return state.frames[state.cur]}
-  function persist(){try{localStorage.setItem('volley-auto',JSON.stringify(state))}catch(e){}}
+  // every change goes to the current match, a moment later, then to the Gist
+  function persist(){boardDirty=true;clearTimeout(commitTimer);commitTimer=setTimeout(commitBoard,600)}
   function dump(){return JSON.stringify(state)}
   function pushUndo(s){undoStack.push(s||dump());if(undoStack.length>80)undoStack.shift();$('undo').disabled=false}
   function find(id){return F().items.find(function(i){return i.id===id})}
@@ -320,7 +387,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     el('rect',{x:0,y:0,width:1000,height:660,fill:'var(--free)'},svg);
     el('rect',{x:100,y:130,width:800,height:400,fill:'var(--court)'},svg);
     el('image',{id:'wmA',href:'logo.png',width:240,height:240,y:210,opacity:.11,preserveAspectRatio:'xMidYMid meet','pointer-events':'none'},svg);
-    el('image',{id:'wmB',href:'crest-lhevb.png',width:240,height:240,y:210,opacity:.16,preserveAspectRatio:'xMidYMid meet','pointer-events':'none'},svg);
+    el('image',{id:'wmB',href:BLANK,width:240,height:240,y:210,opacity:.16,preserveAspectRatio:'xMidYMid meet','pointer-events':'none'},svg);
     var g=el('g',{stroke:'var(--mark)','stroke-width':4,fill:'none','stroke-linecap':'square'},svg);
     el('rect',{x:100,y:130,width:800,height:400},g);
     el('line',{x1:500,y1:130,x2:500,y2:530},g);
@@ -333,10 +400,10 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     el('line',{x1:500,y1:112,x2:500,y2:548,stroke:'#f3f3f3','stroke-width':6,'stroke-dasharray':'3 3'},svg);
     el('circle',{cx:500,cy:112,r:7,fill:'#2b2f33'},svg);
     el('circle',{cx:500,cy:548,r:7,fill:'#2b2f33'},svg);
-    [['A','logo.png','COB'],['B','crest-lhevb.png','LHEVB 2']].forEach(function(t){
+    [['A','logo.png','COB'],['B',BLANK,'']].forEach(function(t){
       var hg=el('g',{id:'hd'+t[0],'pointer-events':'none'},svg);
-      el('image',{href:t[1],x:-4,y:-32,width:64,height:64,preserveAspectRatio:'xMidYMid meet'},hg);
-      var tx=el('text',{x:70,y:2,class:'teamname'},hg);tx.textContent=t[2];
+      el('image',{id:'hdImg'+t[0],href:t[1],x:-4,y:-32,width:64,height:64,preserveAspectRatio:'xMidYMid meet'},hg);
+      var tx=el('text',{id:'hdTxt'+t[0],x:70,y:2,class:'teamname'},hg);tx.textContent=t[2];
     });
     el('g',{id:'strokeLayer'},svg);
     el('g',{id:'itemLayer'},svg);
@@ -491,13 +558,13 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     $('zoneLayer').style.display=$('zones').checked?'':'none';
     if(document.activeElement!==$('stepName'))$('stepName').value=F().name||'';
   }
-  // team crests and names follow the sides: COB is team A, LHEVB 2 is team B
+  // team crests and names follow the sides: COB is team A, the opponent of the match is team B
   function placeCrests(){
     var ax=state.swapped?700:300,bx=1000-ax;
     [['A',ax],['B',bx]].forEach(function(t){
-      var wm=$('wm'+t[0]),hd=$('hd'+t[0]);
+      var wm=$('wm'+t[0]),hd=$('hd'+t[0]),tx=$('hdTxt'+t[0]);
       if(wm)wm.setAttribute('x',t[1]-120);
-      if(hd)hd.setAttribute('transform','translate('+(t[1]-(t[0]==='A'?85:112))+',66)');
+      if(hd){var w=76+Math.max(3,(tx&&tx.textContent.length)||3)*21;hd.setAttribute('transform','translate('+Math.round(t[1]-w/2)+',66)')}
     });
   }
   function fullRender(){placeCrests();renderItems();renderStrokes();renderSteps();renderPanel()}
@@ -753,23 +820,44 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   document.addEventListener('fullscreenchange',onFsChange);
   document.addEventListener('webkitfullscreenchange',onFsChange);
 
-  // ---------- saved tactics ----------
-  // Store shape: {tactics:{name:{state,updated}}, deleted:{name:timestamp}}
-  var STORE_KEY='volley-saved', SYNC_TOKEN='volley-token', SYNC_GIST='volley-gist';
-  var GIST_DESC='Planche volley - synchronisation', GIST_FILE='planche-volley.json';
-  function emptyStore(){return {tactics:{},deleted:{},players:{}}}
-  function loadStore(){
-    var raw=null;try{raw=JSON.parse(localStorage.getItem(STORE_KEY)||'null')}catch(e){}
-    if(!raw||typeof raw!=='object')return emptyStore();
-    if(raw.tactics)return {tactics:raw.tactics||{},deleted:raw.deleted||{},players:raw.players||{}};
-    var s=emptyStore();
-    Object.keys(raw).forEach(function(n){if(raw[n]&&raw[n].frames)s.tactics[n]={state:raw[n],updated:Date.now()}});
-    return s;
+  // ---------- store: models (library) + matches ----------
+  // {v:2, players:{}, library:{tactics,deleted}, matches:{id:{id,meta,tactics,deleted,board}}, deletedMatches:{}}
+  var STORE_KEY='volley-saved', SYNC_TOKEN='volley-token', SYNC_GIST='volley-gist', MATCH_KEY='volley-match';
+  var GIST_DESC='Planche volley - synchronisation', GIST_FILE='planche-volley-v2.json', GIST_FILE_V1='planche-volley.json';
+  var CLUBS=[
+    {key:'police',name:'ASPH',file:'logos/police.png',wm:true},
+    {key:'safran',name:'SAFRAN',file:'logos/safran.png',wm:true},
+    {key:'lhevb',name:'LHEVB',file:'crest-lhevb.png',wm:true},
+    {key:'stromain',name:'St Romain',file:'logos/stromain.png',wm:false},
+    {key:'etretat',name:'Étretat',file:'logos/etretat.png',wm:false},
+    {key:'gravenchon',name:'Gravenchon',file:'logos/gravenchon.png',wm:true},
+    {key:'harfleur',name:'Harfleur',file:'logos/harfleur.png',wm:true},
+    {key:'lesloges',name:'Les Loges',file:'logos/lesloges.png',wm:false}
+  ];
+  function club(key){for(var i=0;i<CLUBS.length;i++)if(CLUBS[i].key===key)return CLUBS[i];return null}
+  function bag(){return {tactics:{},deleted:{}}}
+  function emptyStore(){return {v:2,players:{},library:bag(),matches:{},deletedMatches:{}}}
+  function normStore(o){   // accepts v2, the first format {tactics,deleted,players}, or a plain {name:state} map
+    var st=emptyStore();
+    if(!o||typeof o!=='object')return st;
+    if(o.v===2||o.matches||o.library){
+      st.players=o.players||{};
+      st.library={tactics:(o.library&&o.library.tactics)||{},deleted:(o.library&&o.library.deleted)||{}};
+      st.matches=o.matches||{};st.deletedMatches=o.deletedMatches||{};
+    }else if(o.tactics){
+      st.players=o.players||{};st.library={tactics:o.tactics||{},deleted:o.deleted||{}};
+    }else{
+      Object.keys(o).forEach(function(n){if(o[n]&&o[n].frames)st.library.tactics[n]={state:o[n],updated:Date.now()}});
+    }
+    Object.keys(st.matches).forEach(function(id){var m=st.matches[id];m.id=id;m.meta=m.meta||{};m.tactics=m.tactics||{};m.deleted=m.deleted||{}});
+    return st;
   }
-  function storeStore(s){try{localStorage.setItem(STORE_KEY,JSON.stringify(s));return true}catch(e){return false}}
-  function mergeStores(a,b){
-    var out=emptyStore(),names={};
-    [a,b].forEach(function(s){Object.keys(s.tactics).forEach(function(n){names[n]=1});Object.keys(s.deleted).forEach(function(n){names[n]=1})});
+  function loadStore(){var raw=null;try{raw=JSON.parse(localStorage.getItem(STORE_KEY)||'null')}catch(e){}return normStore(raw)}
+  function storeStore(st){try{localStorage.setItem(STORE_KEY,JSON.stringify(st));return true}catch(e){return false}}
+  // two bags of tactics {tactics,deleted}: the newest version of each name wins, a deletion wins over an older save
+  function mergeBag(a,b){
+    var out=bag(),names={};
+    [a,b].forEach(function(x){Object.keys(x.tactics).forEach(function(n){names[n]=1});Object.keys(x.deleted).forEach(function(n){names[n]=1})});
     Object.keys(names).forEach(function(n){
       var ta=a.tactics[n],tb=b.tactics[n];
       var t=ta&&tb?(ta.updated>=tb.updated?ta:tb):(ta||tb);
@@ -777,37 +865,218 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       if(t&&t.updated>d)out.tactics[n]=t;
       else if(d)out.deleted[n]=d;
     });
-    [a,b].forEach(function(s2){
-      var pl=s2.players||{};
-      Object.keys(pl).forEach(function(k){var c=out.players[k];if(!c||(pl[k].updated||0)>(c.updated||0))out.players[k]=pl[k]});
+    return out;
+  }
+  function mergeMatch(a,b){
+    if(!a)return b;if(!b)return a;
+    var meta=((a.meta.updated||0)>=(b.meta.updated||0))?a.meta:b.meta;
+    var bg=mergeBag(a,b);
+    var board=(a.board&&(!b.board||(a.board.updated||0)>=(b.board.updated||0)))?a.board:b.board;
+    var m={id:a.id,meta:meta,tactics:bg.tactics,deleted:bg.deleted};
+    if(board)m.board=board;
+    return m;
+  }
+  function mergeStores(a,b){
+    var out=emptyStore();
+    out.library=mergeBag(a.library,b.library);
+    [a,b].forEach(function(x){
+      Object.keys(x.players).forEach(function(k){var c=out.players[k];if(!c||(x.players[k].updated||0)>(c.updated||0))out.players[k]=x.players[k]});
+    });
+    var ids={};
+    [a,b].forEach(function(x){Object.keys(x.matches).forEach(function(i){ids[i]=1});Object.keys(x.deletedMatches).forEach(function(i){ids[i]=1})});
+    Object.keys(ids).forEach(function(id){
+      var m=mergeMatch(a.matches[id],b.matches[id]);
+      var d=Math.max(a.deletedMatches[id]||0,b.deletedMatches[id]||0);
+      if(m&&(m.meta.updated||0)>d)out.matches[id]=m;
+      else if(d)out.deletedMatches[id]=d;
     });
     return out;
   }
-  var SAVE_HINT='Les tactiques sont gardées sur cet appareil.';
-  function say(m){$('saveMsg').textContent=m;clearTimeout(savedMsgTimer);savedMsgTimer=setTimeout(function(){$('saveMsg').textContent=SAVE_HINT},3500)}
-  function renderSaved(){
-    var all=loadStore().tactics,ul=$('saved');ul.innerHTML='';
-    var names=Object.keys(all).sort(function(x,y){return all[y].updated-all[x].updated});
-    if(!names.length){var li=document.createElement('li');li.className='hint';li.style.margin='0';li.textContent='Aucune tactique enregistrée.';ul.appendChild(li);return}
-    names.forEach(function(n){
-      var li=document.createElement('li');
-      var s=document.createElement('span');s.className='name';s.textContent=n;s.title=n;
-      var lo=document.createElement('button');lo.textContent='Ouvrir';
-      lo.onclick=function(){stopPlay();pushUndo();state=cleanState(JSON.parse(JSON.stringify(all[n].state)));state.cur=0;sel=null;fullRender();persist();$('saveName').value=n;say('« '+n+' » ouverte.')};
-      var de=document.createElement('button');de.textContent='Suppr.';de.className='danger';
-      de.onclick=function(){
-        if(de.dataset.arm){var st=loadStore();delete st.tactics[n];st.deleted[n]=Date.now();storeStore(st);renderSaved();syncSoon()}
-        else{de.dataset.arm='1';de.textContent='Confirmer';setTimeout(function(){if(de.isConnected){delete de.dataset.arm;de.textContent='Suppr.'}},3000)}
-      };
-      li.appendChild(s);li.appendChild(lo);li.appendChild(de);ul.appendChild(li);
+
+  // ---------- matches ----------
+  function todayStr(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
+  function fmtDate(d){return d?d.slice(8,10)+'/'+d.slice(5,7):''}
+  function longDate(d){
+    if(!d)return '';
+    try{var t=new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});return t.charAt(0).toUpperCase()+t.slice(1)}catch(e){return d}
+  }
+  function venueText(v){return v==='dom'?'À domicile':v==='ext'?'À l’extérieur':''}
+  function sortedMatches(st){
+    return Object.keys(st.matches).map(function(i){return st.matches[i]}).sort(function(x,y){
+      var dx=x.meta.date||'9999',dy=y.meta.date||'9999';
+      return dx<dy?-1:dx>dy?1:String(x.meta.round||'').localeCompare(String(y.meta.round||''),'fr',{numeric:true});
     });
   }
-  $('save').onclick=function(){
+  function matchLabel(m){
+    var mt=m.meta,p=[];
+    if(mt.round)p.push(mt.round);
+    if(mt.date)p.push(fmtDate(mt.date));
+    p.push(mt.opp||'Adversaire');
+    if(mt.venue)p.push(mt.venue==='dom'?'dom.':'ext.');
+    return p.join(' · ');
+  }
+  function pickInitialMatch(st){
+    var saved='';try{saved=localStorage.getItem(MATCH_KEY)||''}catch(e){}
+    if(saved&&st.matches[saved])return saved;
+    var list=sortedMatches(st),today=todayStr(),i;
+    for(i=0;i<list.length;i++)if(list[i].meta.date&&list[i].meta.date>=today)return list[i].id;
+    return list.length?list[list.length-1].id:null;
+  }
+  function createBlankMatch(){
+    var st=loadStore(),id='m-'+Date.now().toString(36);
+    st.matches[id]={id:id,meta:{opp:'Match',venue:'dom',updated:Date.now()},tactics:{},deleted:{}};
+    storeStore(st);return id;
+  }
+  function boardFor(m){
+    var d=(m&&m.board&&m.board.state&&m.board.state.frames&&m.board.state.frames.length)?cleanState(clone(m.board.state)):defaultBoard();
+    d.cur=Math.min(d.cur||0,d.frames.length-1);return d;
+  }
+  function loadBoardFromMatch(st){
+    var m=st.matches[curMatch];
+    state=boardFor(m);lastBoardUpdated=(m&&m.board&&m.board.updated)||0;
+    undoStack=[];sel=null;selStroke=null;boardDirty=false;
+  }
+  function commitBoard(){
+    boardDirty=false;clearTimeout(commitTimer);
+    if(!curMatch||!state)return;
+    var st=loadStore(),m=st.matches[curMatch];if(!m)return;
+    m.board={state:cleanState(clone(state)),updated:Date.now()};
+    lastBoardUpdated=m.board.updated;
+    storeStore(st);syncSoon(4000);
+  }
+  function flushBoard(){if(boardDirty)commitBoard()}
+  function openMatch(id){
+    stopPlay();flushBoard();
+    var st=loadStore();if(!st.matches[id])return;
+    curMatch=id;try{localStorage.setItem(MATCH_KEY,id)}catch(e){}
+    loadBoardFromMatch(st);
+    $('matchForm').hidden=true;
+    fullRender();renderSaved();renderMatchUi();
+  }
+  function setTeamBtn(btn,label,src){
+    btn.innerHTML='';
+    if(src){var im=document.createElement('img');im.className='tlogo';im.alt='';im.src=src;btn.appendChild(im)}
+    else{var d=document.createElement('span');d.className='dot';d.style.background='var(--team-b)';btn.appendChild(d)}
+    btn.appendChild(document.createTextNode(label));
+  }
+  function applyOpponent(m){
+    var mt=m?m.meta:{},name=mt.opp||'Adversaire',c=club(mt.logo),src=c?c.file:BLANK;
+    $('hdTxtB').textContent=name;
+    $('hdImgB').setAttribute('href',src);
+    $('wmB').setAttribute('href',(c&&c.wm)?c.file:BLANK);
+    var short=name.length>16?name.slice(0,15)+'…':name;
+    setTeamBtn($('teamB'),short,c?c.file:'');
+    setTeamBtn($('addB'),'Joueur '+short,c?c.file:'');
+    placeCrests();
+  }
+  function renderMatchUi(){
+    var st=loadStore(),selEl=$('matchSel'),today=todayStr();
+    selEl.innerHTML='';
+    var up=document.createElement('optgroup'),past=document.createElement('optgroup');
+    up.label='À venir';past.label='Joués';
+    sortedMatches(st).forEach(function(m){
+      var o=document.createElement('option');o.value=m.id;o.textContent=matchLabel(m);
+      ((m.meta.date&&m.meta.date<today)?past:up).appendChild(o);
+    });
+    if(up.children.length)selEl.appendChild(up);
+    if(past.children.length)selEl.appendChild(past);
+    selEl.value=curMatch;
+    var m=st.matches[curMatch],mt=m?m.meta:{};
+    $('mTitle').textContent='COB – '+(mt.opp||'Adversaire');
+    var line=[longDate(mt.date),mt.time,venueText(mt.venue),mt.round].filter(Boolean).join(' · ');
+    $('mLine').textContent=line||'Date à renseigner';
+    $('mResult').textContent=mt.result?'Résultat : '+mt.result.replace('-','–'):'';
+    $('subMatch').textContent='Ce match : '+(mt.opp||'Adversaire');
+    applyOpponent(m);
+  }
+  var editingNew=false, delTimer=null;
+  function fillLogoSelect(){
+    var sl=$('mfLogo');sl.innerHTML='<option value="">Aucun logo</option>';
+    CLUBS.forEach(function(c){var o=document.createElement('option');o.value=c.key;o.textContent=c.name;sl.appendChild(o)});
+  }
+  function openMatchForm(isNew){
+    var m=isNew?null:loadStore().matches[curMatch],mt=m?m.meta:{venue:'dom'};
+    editingNew=!!isNew;
+    $('mfOpp').value=mt.opp||'';$('mfLogo').value=mt.logo||'';$('mfDate').value=mt.date||'';
+    $('mfTime').value=mt.time||'';$('mfVenue').value=mt.venue||'dom';$('mfRound').value=mt.round||'';$('mfResult').value=mt.result||'';
+    $('mfDelete').hidden=!!isNew;$('mfDelete').textContent='Supprimer ce match';delete $('mfDelete').dataset.arm;
+    $('matchForm').hidden=false;$('mfOpp').focus();
+  }
+  $('matchEditBtn').onclick=function(){if($('matchForm').hidden)openMatchForm(false);else $('matchForm').hidden=true};
+  $('matchNew').onclick=function(){openMatchForm(true)};
+  $('mfCancel').onclick=function(){$('matchForm').hidden=true};
+  $('mfLogo').onchange=function(){var c=club(this.value);if(c&&!$('mfOpp').value.trim())$('mfOpp').value=c.name};
+  $('matchSel').onchange=function(){openMatch(this.value)};
+  $('mfSave').onclick=function(){
+    var meta={opp:$('mfOpp').value.trim()||'Adversaire',logo:$('mfLogo').value,date:$('mfDate').value,time:$('mfTime').value.trim(),
+      venue:$('mfVenue').value,round:$('mfRound').value.trim(),result:$('mfResult').value.trim(),updated:Date.now()};
+    flushBoard();
+    var st=loadStore();
+    if(editingNew){
+      var id='m-'+Date.now().toString(36);
+      st.matches[id]={id:id,meta:meta,tactics:{},deleted:{}};delete st.deletedMatches[id];
+      storeStore(st);syncSoon();openMatch(id);
+    }else{
+      var m=st.matches[curMatch];if(!m)return;
+      m.meta=meta;storeStore(st);syncSoon();
+      $('matchForm').hidden=true;renderMatchUi();
+    }
+  };
+  $('mfDelete').onclick=function(){
+    var b=$('mfDelete');
+    if(!b.dataset.arm){b.dataset.arm='1';b.textContent='Confirmer la suppression';delTimer=setTimeout(function(){delete b.dataset.arm;b.textContent='Supprimer ce match'},3500);return}
+    clearTimeout(delTimer);
+    boardDirty=false;clearTimeout(commitTimer);
+    var st=loadStore();
+    st.deletedMatches[curMatch]=Date.now();delete st.matches[curMatch];storeStore(st);
+    var next=pickInitialMatch(loadStore());
+    try{localStorage.removeItem(MATCH_KEY)}catch(e){}
+    next=pickInitialMatch(loadStore())||createBlankMatch();
+    syncSoon();curMatch=null;openMatch(next);
+  };
+
+  // ---------- saved tactics (this match, and models shared by every match) ----------
+  var SAVE_HINT='Les tactiques sont gardées sur cet appareil.';
+  function say(m){$('saveMsg').textContent=m;clearTimeout(savedMsgTimer);savedMsgTimer=setTimeout(function(){$('saveMsg').textContent=SAVE_HINT},3500)}
+  function fillList(ul,all,emptyMsg,sortByName,onDelete){
+    ul.innerHTML='';
+    var names=Object.keys(all).sort(function(x,y){return sortByName?x.localeCompare(y,'fr',{numeric:true}):all[y].updated-all[x].updated});
+    if(!names.length){var li=document.createElement('li');li.className='hint';li.style.margin='0';li.textContent=emptyMsg;ul.appendChild(li);return}
+    names.forEach(function(n){
+      var li=document.createElement('li');
+      var sp=document.createElement('span');sp.className='name';sp.textContent=n;sp.title=n;
+      var lo=document.createElement('button');lo.textContent='Ouvrir';
+      lo.onclick=function(){stopPlay();pushUndo();state=cleanState(clone(all[n].state));state.cur=0;sel=null;selStroke=null;fullRender();persist();$('saveName').value=n;say('« '+n+' » ouverte.')};
+      var de=document.createElement('button');de.textContent='Suppr.';de.className='danger';
+      de.onclick=function(){
+        if(de.dataset.arm){onDelete(n)}
+        else{de.dataset.arm='1';de.textContent='Confirmer';setTimeout(function(){if(de.isConnected){delete de.dataset.arm;de.textContent='Suppr.'}},3000)}
+      };
+      li.appendChild(sp);li.appendChild(lo);li.appendChild(de);ul.appendChild(li);
+    });
+  }
+  function renderSaved(){
+    var st=loadStore(),m=st.matches[curMatch];
+    fillList($('saved'),m?m.tactics:{},'Aucune tactique enregistrée pour ce match.',false,function(n){
+      var s2=loadStore(),mm=s2.matches[curMatch];if(!mm)return;
+      delete mm.tactics[n];mm.deleted[n]=Date.now();storeStore(s2);renderSaved();syncSoon();
+    });
+    fillList($('savedLib'),st.library.tactics,'Aucun modèle.',true,function(n){
+      var s2=loadStore();delete s2.library.tactics[n];s2.library.deleted[n]=Date.now();storeStore(s2);renderSaved();syncSoon();
+    });
+  }
+  function saveTactic(toLibrary){
     var n=$('saveName').value.trim();
     if(!n){say('Donnez un nom à la tactique.');$('saveName').focus();return}
-    var st=loadStore();st.tactics[n]={state:cleanState(JSON.parse(dump())),updated:Date.now()};delete st.deleted[n];
-    if(storeStore(st)){say('« '+n+' » enregistrée.');renderSaved();syncSoon()}else say('Enregistrement impossible dans ce navigateur.');
-  };
+    flushBoard();
+    var st=loadStore(),target=toLibrary?st.library:st.matches[curMatch];
+    if(!target){say('Aucun match sélectionné.');return}
+    target.tactics[n]={state:cleanState(clone(state)),updated:Date.now()};delete target.deleted[n];
+    if(storeStore(st)){say(toLibrary?'« '+n+' » enregistrée comme modèle.':'« '+n+' » enregistrée dans ce match.');renderSaved();syncSoon()}
+    else say('Enregistrement impossible dans ce navigateur.');
+  }
+  $('save').onclick=function(){saveTactic(false)};
+  $('saveModel').onclick=function(){saveTactic(true)};
 
   // ---------- sync through a private GitHub Gist ----------
   var syncing=false, syncTimer=null;
@@ -832,25 +1101,41 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       return api('POST','/gists',{description:GIST_DESC,public:false,files:files}).then(function(c){return c.id});
     }).then(function(gid){try{localStorage.setItem(SYNC_GIST,gid)}catch(e){}return gid});
   }
-  function readRemote(g){
-    var f=g.files&&g.files[GIST_FILE];
-    if(!f)return Promise.resolve(emptyStore());
+  function readGistFile(g,name){
+    var f=g.files&&g.files[name];
+    if(!f)return Promise.resolve(null);
     var get=f.truncated?fetch(f.raw_url).then(function(r){return r.text()}):Promise.resolve(f.content);
-    return get.then(function(t){
-      var o=null;try{o=JSON.parse(t)}catch(e){}
-      return o&&o.tactics?{tactics:o.tactics,deleted:o.deleted||{},players:o.players||{}}:emptyStore();
+    return get.then(function(t){var o=null;try{o=JSON.parse(t)}catch(e){}return o?normStore(o):null});
+  }
+  // the whole site lives in planche-volley-v2.json; the first-format file is still read so nothing is lost
+  function readRemote(g){
+    return Promise.all([readGistFile(g,GIST_FILE),readGistFile(g,GIST_FILE_V1)]).then(function(r){
+      var out=emptyStore();
+      if(r[0])out=mergeStores(out,r[0]);
+      if(r[1])out=mergeStores(out,r[1]);
+      return out;
     });
+  }
+  function adoptRemoteBoard(merged){
+    if(drag||drawing||sDrag||eDrag)return;
+    var m=merged.matches[curMatch];
+    if(!m){var next=pickInitialMatch(merged)||createBlankMatch();curMatch=null;openMatch(next);return}
+    if(!boardDirty&&m.board&&(m.board.updated||0)>lastBoardUpdated){
+      stopPlay();state=cleanState(clone(m.board.state));state.cur=Math.min(state.cur||0,state.frames.length-1);
+      lastBoardUpdated=m.board.updated;undoStack=[];sel=null;selStroke=null;fullRender();
+    }
   }
   function doSync(){
     if(!getTok())return Promise.resolve();
     if(syncing)return Promise.resolve();
+    flushBoard();
     syncing=true;syncSay('Synchronisation…');
     var gid;
     return ensureGist().then(function(id){gid=id;return api('GET','/gists/'+id)})
       .then(readRemote)
       .then(function(remote){
         var local=loadStore(),merged=mergeStores(local,remote);
-        storeStore(merged);refreshPlayers();renderSaved();
+        storeStore(merged);refreshPlayers();renderSaved();renderMatchUi();adoptRemoteBoard(merged);
         if(JSON.stringify(merged)===JSON.stringify(remote))return;
         var files={};files[GIST_FILE]={content:JSON.stringify(merged)};
         return api('PATCH','/gists/'+gid,{files:files});
@@ -861,11 +1146,11 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       .catch(function(e){
         if(e.message==='AUTH')syncSay('Jeton refusé. Vérifiez qu’il est copié en entier.','err');
         else if(e.message==='FORBIDDEN')syncSay('Accès refusé. Le jeton doit avoir le droit « gist ».','err');
-        else syncSay('Pas de connexion à GitHub. Vos tactiques restent sur cet appareil.','err');
+        else syncSay('Pas de connexion à GitHub. Vos données restent sur cet appareil.','err');
       })
       .then(function(){syncing=false});
   }
-  function syncSoon(){if(!getTok())return;clearTimeout(syncTimer);syncTimer=setTimeout(doSync,600)}
+  function syncSoon(ms){if(!getTok())return;clearTimeout(syncTimer);syncTimer=setTimeout(doSync,ms||600)}
   $('syncNow').onclick=function(){
     var t=$('token').value.trim();
     if(!t){syncSay('Collez d’abord votre jeton GitHub.','err');$('token').focus();return}
@@ -874,15 +1159,17 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   };
   $('syncOff').onclick=function(){
     try{localStorage.removeItem(SYNC_TOKEN);localStorage.removeItem(SYNC_GIST)}catch(e){}
-    $('token').value='';syncSay('Non connecté. Vos tactiques restent sur cet appareil.');
+    $('token').value='';syncSay('Non connecté. Vos données restent sur cet appareil.');
   };
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)syncSoon()});
-  window.addEventListener('online',syncSoon);
+  document.addEventListener('visibilitychange',function(){if(document.hidden)flushBoard();else syncSoon()});
+  window.addEventListener('pagehide',flushBoard);
+  window.addEventListener('online',function(){syncSoon()});
 
   // ---------- file export / import ----------
   $('exportBtn').onclick=function(){
+    flushBoard();
     var blob=new Blob([JSON.stringify(loadStore(),null,1)],{type:'application/json'});
-    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tactiques-volley.json';
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='planche-volley-sauvegarde.json';
     document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},2000);
   };
   $('importBtn').onclick=function(){$('importFile').click()};
@@ -891,9 +1178,10 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     var r=new FileReader();
     r.onload=function(){
       var o=null;try{o=JSON.parse(r.result)}catch(e){}
-      if(!o||!o.tactics){say('Ce fichier n’est pas une sauvegarde de tactiques.');return}
-      storeStore(mergeStores(loadStore(),{tactics:o.tactics,deleted:o.deleted||{},players:o.players||{}}));
-      refreshPlayers();renderSaved();say('Tactiques importées.');syncSoon();
+      if(!o||typeof o!=='object'){say('Ce fichier n’est pas une sauvegarde de la planche.');return}
+      flushBoard();
+      storeStore(mergeStores(loadStore(),normStore(o)));
+      refreshPlayers();renderSaved();renderMatchUi();say('Sauvegarde importée.');syncSoon();
     };
     r.readAsText(f);this.value='';
   };
@@ -926,22 +1214,48 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     $('saveName').value='';fullRender();persist();
   };
 
-  // ---------- built-in tactics (names and positions, no photos) ----------
+  // ---------- built-in data: models and the season calendar (names and positions only, no photos) ----------
   function seedDefaults(){
-    var D=window.COB_DEFAULTS;if(!D||!D.tactics)return;
+    var D=window.COB_DEFAULTS;if(!D)return;
     var st=loadStore(),changed=false;
-    Object.keys(D.tactics).forEach(function(n){
-      var cur=st.tactics[n];
-      if(st.deleted[n])return;
+    Object.keys(D.tactics||{}).forEach(function(n){
+      var cur=st.library.tactics[n];
+      if(st.library.deleted[n])return;
       if(!cur||(cur.updated<=1&&cur.dv!==D.version)){
-        st.tactics[n]={state:D.tactics[n].state,updated:1,dv:D.version};changed=true;
+        st.library.tactics[n]={state:D.tactics[n].state,updated:1,dv:D.version};changed=true;
+      }
+    });
+    (D.matches||[]).forEach(function(dm){
+      if(st.deletedMatches[dm.id])return;
+      var cur=st.matches[dm.id];
+      if(!cur){
+        var meta=clone(dm.meta);meta.updated=1;meta.dv=D.version;
+        st.matches[dm.id]={id:dm.id,meta:meta,tactics:{},deleted:{}};changed=true;
+      }else if((cur.meta.updated||0)<=1&&cur.meta.dv!==D.version){
+        var meta2=clone(dm.meta);meta2.updated=1;meta2.dv=D.version;cur.meta=meta2;changed=true;
       }
     });
     if(changed)storeStore(st);
   }
+  // a board saved by the previous version (one board for the whole site) moves into the current match
+  function adoptLegacyBoard(){
+    try{
+      var lg=localStorage.getItem('volley-auto');
+      if(lg){
+        var st=loadStore(),m=st.matches[curMatch],o=JSON.parse(lg);
+        if(m&&!m.board&&o&&o.frames&&o.frames.length){m.board={state:cleanState(o),updated:Date.now()};storeStore(st)}
+        localStorage.removeItem('volley-auto');
+      }
+    }catch(e){}
+  }
 
   // ---------- boot ----------
-  init();seedDefaults();buildCourt();PLAYERS=loadStore().players||{};$('undo').disabled=true;fullRender();renderSaved();
+  seedDefaults();
+  curMatch=pickInitialMatch(loadStore())||createBlankMatch();
+  adoptLegacyBoard();
+  loadBoardFromMatch(loadStore());
+  buildCourt();PLAYERS=loadStore().players||{};
+  fillLogoSelect();$('undo').disabled=true;fullRender();renderSaved();renderMatchUi();
   if(getTok()){$('token').value=getTok();$('syncCard').open=true;doSync()}
 })();
 </script>
