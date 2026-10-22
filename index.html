@@ -361,12 +361,12 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   }
   function clone(o){return JSON.parse(JSON.stringify(o))}
   // The board a match opens with when nothing has been saved for it: the first model (rotation 1)
-  function defaultBoard(){
-    var D=window.COB_DEFAULTS,d=D&&D.template?clone(D.template):null;
-    if(!d){
-      var st=loadStore(),names=Object.keys(st.library.tactics).sort();
-      d=names.length?clone(st.library.tactics[names[0]].state):{frames:[{items:freshItems(),strokes:[]}],cur:0};
-    }
+  // a match opens with a blank board (twelve numbered players and the ball), except the ones built in
+  function defaultBoard(id){
+    var D=window.COB_DEFAULTS,t=null;
+    ((D&&D.matches)||[]).forEach(function(dm){if(dm.id===id&&dm.template)t=clone(dm.template)});
+    var d=t;
+    if(!d){var keep=state;state=null;d={frames:[{items:freshItems(),strokes:[]}],cur:0};state=keep}
     d.cur=0;return cleanState(d);
   }
   function cleanState(o){
@@ -931,7 +931,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     storeStore(st);return id;
   }
   function boardFor(m){
-    var d=(m&&m.board&&m.board.state&&m.board.state.frames&&m.board.state.frames.length)?cleanState(clone(m.board.state)):defaultBoard();
+    var d=(m&&m.board&&m.board.state&&m.board.state.frames&&m.board.state.frames.length)?cleanState(clone(m.board.state)):defaultBoard(m&&m.id);
     d.cur=Math.min(d.cur||0,d.frames.length-1);return d;
   }
   function loadBoardFromMatch(st){
