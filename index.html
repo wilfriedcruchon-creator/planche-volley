@@ -209,6 +209,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       </div>
       <div class="row" style="margin-top:10px">
         <button id="matchEditBtn">Modifier</button>
+        <button id="matchDup" title="Crée une copie de ce match, avec ses tactiques et son tableau">Dupliquer</button>
         <button id="matchNew" class="primary">＋ Nouveau match</button>
       </div>
       <div class="mform" id="matchForm" hidden>
@@ -1006,14 +1007,15 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     $('subMatch').textContent='Ce match : '+(mt.opp||'Adversaire');
     applyOpponent(m);
   }
-  var editingNew=false, delTimer=null;
+  var editingNew=false, copyFrom=null, delTimer=null;
   function fillLogoSelect(){
     var sl=$('mfLogo');sl.innerHTML='<option value="">Aucun logo</option>';
     CLUBS.forEach(function(c){var o=document.createElement('option');o.value=c.key;o.textContent=c.name;sl.appendChild(o)});
   }
-  function openMatchForm(isNew){
-    var m=isNew?null:loadStore().matches[curMatch],mt=m?m.meta:{venue:'dom'};
-    editingNew=!!isNew;
+  function openMatchForm(isNew,copyOf){
+    var m=isNew&&!copyOf?null:loadStore().matches[copyOf||curMatch],mt=m?clone(m.meta):{venue:'dom'};
+    if(copyOf){mt.opp=(mt.opp||'Match')+' (copie)';mt.date='';mt.round='';mt.result='';mt.time=''}
+    editingNew=!!isNew;copyFrom=copyOf||null;
     $('mfOpp').value=mt.opp||'';$('mfLogo').value=mt.logo||'';$('mfDate').value=mt.date||'';
     $('mfTime').value=mt.time||'';$('mfVenue').value=mt.venue||'dom';$('mfRound').value=mt.round||'';$('mfResult').value=mt.result||'';
     $('mfDelete').hidden=!!isNew;$('mfDelete').textContent='Supprimer ce match';delete $('mfDelete').dataset.arm;
@@ -1021,6 +1023,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   }
   $('matchEditBtn').onclick=function(){if($('matchForm').hidden)openMatchForm(false);else $('matchForm').hidden=true};
   $('matchNew').onclick=function(){openMatchForm(true)};
+  $('matchDup').onclick=function(){openMatchForm(true,curMatch)};
   $('mfCancel').onclick=function(){$('matchForm').hidden=true};
   $('mfLogo').onchange=function(){var c=club(this.value);if(c&&!$('mfOpp').value.trim())$('mfOpp').value=c.name};
   $('matchSel').onchange=function(){openMatch(this.value)};
@@ -1032,6 +1035,13 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     if(editingNew){
       var id='m-'+Date.now().toString(36);
       st.matches[id]={id:id,meta:meta,tactics:{},deleted:{}};delete st.deletedMatches[id];
+      var src=copyFrom&&st.matches[copyFrom];
+      if(src){   // a copy keeps the tactics and the board of the match it comes from
+        var t0=Date.now();
+        Object.keys(src.tactics).forEach(function(n){st.matches[id].tactics[n]={state:clone(src.tactics[n].state),updated:t0}});
+        var bs=(copyFrom===curMatch)?state:(src.board&&src.board.state);   // the board shown right now, even if never saved
+        if(bs)st.matches[id].board={state:cleanState(clone(bs)),updated:t0};
+      }
       storeStore(st);syncSoon();openMatch(id);
     }else{
       var m=st.matches[curMatch];if(!m)return;
