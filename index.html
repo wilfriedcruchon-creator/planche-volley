@@ -1196,16 +1196,12 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   window.addEventListener('pagehide',flushBoard);
   window.addEventListener('online',function(){syncSoon();readSoon()});
 
-  // ---------- shared copy, readable by everybody (no photos) ----------
+  // ---------- shared copy, readable by everybody ----------
   // Token holders publish it after each sync. Everybody else only reads it: they receive the team's updates,
   // and what they change stays on their own device.
   var PUB_FILE='planche-volley-public.json', PUB_HASH='volley-pubhash', readBusy=false, lastRead=0;
   function pubId(){var D=window.COB_DEFAULTS;return (D&&D.publicGist)||''}
-  function publicCopy(st){
-    var c=clone(st);
-    Object.keys(c.players).forEach(function(k){delete c.players[k].photo});
-    return c;
-  }
+  function publicCopy(st){return clone(st)}   // the whole site, photos included
   function strHash(t){var h=5381,i;for(i=0;i<t.length;i++)h=((h<<5)+h+t.charCodeAt(i))|0;return String(h)+':'+t.length}
   function publishPublic(merged){
     var id=pubId();if(!id||!merged||!getTok())return Promise.resolve();
