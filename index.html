@@ -76,6 +76,8 @@ svg.dragging .item{cursor:grabbing}
 .zlabel{font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:rgba(10,12,16,.85);stroke-width:5px;stroke-linejoin:round;pointer-events:none}
 .tlogo{height:20px;width:auto;max-width:30px;object-fit:contain;vertical-align:-5px;margin-right:6px}
 .teamname{font-family:var(--display);font-weight:800;font-style:italic;text-transform:uppercase;font-size:38px;fill:#fff;dominant-baseline:central;paint-order:stroke;stroke:rgba(0,0,0,.5);stroke-width:4px;stroke-linejoin:round;pointer-events:none}
+.navlink{display:inline-flex;align-items:center;gap:6px;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:9px 13px;color:var(--ink);text-decoration:none;font-weight:600;margin-right:6px}
+.navlink:hover,.navlink:focus-visible{border-color:var(--accent);outline:none}
 .matchbar{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
 .matchbar label{font-family:var(--display);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:13px;color:var(--muted)}
 .matchbar select{min-width:0;max-width:100%;font-weight:600;padding:9px 10px;font-size:15px}
@@ -160,6 +162,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     <p>Placez vos joueurs, tracez les déplacements, enchaînez les étapes.</p>
   </div>
   <div class="matchbar">
+    <a class="navlink" href="fondamentaux.html">▶ Fondamentaux</a>
     <label for="matchSel">Match</label>
     <select id="matchSel" aria-label="Choisir le match"></select>
   </div>

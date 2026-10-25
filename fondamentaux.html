@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>Fondamentaux · Planche Tactique COB</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,800&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Fundamentals page: the same black / red look as the board, a grid of video cards grouped by theme */
+:root{
+  --bg:#0b0b0d; --panel:#151518; --ink:#f2f2f4; --muted:#9d9da6; --line:#2d2d34; --soft:#212126;
+  --accent:#e10f1a; --display:'Barlow Condensed','Arial Narrow',sans-serif; --body:'Barlow',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;background:#0b0b0d;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;min-height:100vh;background-color:var(--bg);
+  background-image:radial-gradient(900px 480px at 6% -8%,rgba(225,15,26,.24),transparent 62%),radial-gradient(700px 420px at 100% 100%,rgba(225,15,26,.10),transparent 60%),repeating-linear-gradient(135deg,rgba(255,255,255,.02) 0 2px,transparent 2px 16px);
+  color:var(--ink);font-family:var(--body);font-size:15px;
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+a{color:#ff8a90}
+header{display:flex;align-items:center;gap:16px;margin:0 auto 22px;max-width:1200px;padding-bottom:14px;border-bottom:1px solid var(--line);position:relative;flex-wrap:wrap}
+header::after{content:'';position:absolute;left:0;bottom:-1px;width:min(260px,40%);height:3px;background:var(--accent)}
+header img{width:64px;height:auto;flex:none;filter:drop-shadow(0 4px 14px rgba(225,15,26,.35))}
+.club{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+h1{font-family:var(--display);font-weight:800;font-style:italic;font-size:40px;line-height:.95;margin:0;letter-spacing:.01em;text-transform:uppercase}
+header p{margin:6px 0 0;color:var(--muted)}
+.back{margin-left:auto;display:inline-flex;align-items:center;gap:8px;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:9px 14px;color:var(--ink);text-decoration:none;font-weight:600}
+.back:hover,.back:focus-visible{border-color:var(--accent);outline:none}
+main{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:30px}
+h2{font-family:var(--display);font-size:22px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);margin:0 0 4px;font-weight:700;display:flex;align-items:baseline;gap:12px}
+h2 small{font-family:var(--body);font-size:13px;letter-spacing:0;text-transform:none;color:var(--muted);font-weight:400}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:16px;margin-top:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:0;display:flex;flex-direction:column}
+.player{position:relative;width:100%;aspect-ratio:16/9;background:#000}
+.player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.thumb{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:#000;cursor:pointer;display:block}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;opacity:.92;transition:opacity .15s}
+.thumb:hover img,.thumb:focus-visible img{opacity:1}
+.thumb:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.play{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:rgba(225,15,26,.92);box-shadow:0 4px 18px rgba(0,0,0,.5)}
+.play::after{content:'';position:absolute;left:25px;top:19px;border-left:22px solid #fff;border-top:13px solid transparent;border-bottom:13px solid transparent}
+.yt{display:block;padding:0 14px 12px;font-size:13px}
+.meta{padding:11px 14px 13px;display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.meta h3{margin:0;font-size:15.5px;font-weight:600;line-height:1.3}
+.dur{flex:none;font-family:var(--display);font-weight:700;letter-spacing:.06em;font-size:14px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 7px;font-variant-numeric:tabular-nums}
+.note{color:var(--muted);font-size:13px;max-width:1200px;margin:26px auto 0}
+@media (max-width:560px){h1{font-size:30px}header img{width:52px}.back{margin-left:0}}
+</style>
+</head>
+<body>
+<header>
+  <img src="logo.png" alt="Logo C.O.B Volleyball" width="64" height="73">
+  <div>
+    <p class="club">Les Cobras · C.O.B Volleyball</p>
+    <h1>Fondamentaux</h1>
+    <p>Les règles et les gestes de base du volley-ball, en vidéo.</p>
+  </div>
+  <a class="back" href="./">← Planche tactique</a>
+</header>
+
+<main id="main"></main>
+<p class="note">Vidéos de la chaîne <a href="https://www.youtube.com/playlist?list=PLORPp3Z__nge6QeJ5a1md_QBwO2REBUP8" target="_blank" rel="noopener">SIKANA Français</a> (playlist « Apprendre à jouer au volley »), lues avec le lecteur YouTube : il faut internet. Touchez une image pour lancer la vidéo. Les éventuelles publicités sont décidées par la chaîne et par YouTube.</p>
+
+<script>
+(function(){
+  // title, YouTube id and length (seconds) of each video, grouped by theme
+  var SECTIONS=[
+    {title:'Règles et positions',sub:'Pour bien comprendre le jeu',videos:[
+      ['Les règles du volley-ball','7Mkn7ST1uAI',127],
+      ['Les fautes de base','UfaxywMwpWc',143],
+      ['Connaître les zones, les positions et les rôles des joueurs','YaETVFkc4aY',136]]},
+    {title:'Les gestes',sub:'Passe, manchette, réception, attaque, défense, contre',videos:[
+      ['Faire une passe avant','lEaaaxPJ1cQ',122],
+      ['Faire une manchette','aZkZwAFeye0',93],
+      ['Apprendre la réception','ZLRy_Gu9LVA',90],
+      ['Comment attaquer','3aQgfk0VtEA',111],
+      ['Apprendre à défendre','i0Io4-jeuyQ',110],
+      ['Apprendre le contre','hJKueZn-tNQ',114]]},
+    {title:'Le service',sub:'De la cuillère au service smashé',videos:[
+      ['Service à la cuillère et service tennis','xl6twpn3Qs8',112],
+      ['Le service smashé puissant et smashé flottant','50TUVvPLKr8',118]]}
+  ];
+  var main=document.getElementById('main');
+  function fmt(s){s=Math.round(s);return Math.floor(s/60)+':'+('0'+s%60).slice(-2)}
+  SECTIONS.forEach(function(sec){
+    var wrap=document.createElement('section');
+    var h=document.createElement('h2');h.textContent=sec.title;
+    var sm=document.createElement('small');sm.textContent=sec.sub;h.appendChild(sm);
+    var grid=document.createElement('div');grid.className='grid';
+    sec.videos.forEach(function(v){
+      var card=document.createElement('article');card.className='card';
+      var box=document.createElement('div');box.className='player';
+      function facade(){
+        box.innerHTML='';box.classList.remove('live');
+        var b=document.createElement('button');b.type='button';b.className='thumb';b.setAttribute('aria-label','Lire : '+v[0]);
+        var im=document.createElement('img');im.alt='';im.loading='lazy';
+        im.src='https://i.ytimg.com/vi/'+v[1]+'/hq720.jpg';
+        im.onerror=function(){im.onerror=null;im.src='https://i.ytimg.com/vi/'+v[1]+'/mqdefault.jpg'};
+        var pl=document.createElement('span');pl.className='play';pl.setAttribute('aria-hidden','true');
+        b.appendChild(im);b.appendChild(pl);
+        b.onclick=function(){
+          [].forEach.call(document.querySelectorAll('.player.live'),function(o){o._reset()});   // one video at a time
+          box.innerHTML='';box.classList.add('live');
+          var f=document.createElement('iframe');
+          f.src='https://www.youtube-nocookie.com/embed/'+v[1]+'?autoplay=1&rel=0&modestbranding=1&playsinline=1';
+          f.title=v[0];f.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';f.allowFullscreen=true;
+          f.referrerPolicy='strict-origin-when-cross-origin';
+          box.appendChild(f);
+        };
+        box.appendChild(b);
+      }
+      box._reset=facade;facade();
+      var meta=document.createElement('div');meta.className='meta';
+      var t=document.createElement('h3');t.textContent=v[0];
+      var d=document.createElement('span');d.className='dur';d.textContent=fmt(v[2]);
+      meta.appendChild(t);meta.appendChild(d);
+      var yt=document.createElement('a');yt.className='yt';yt.href='https://www.youtube.com/watch?v='+v[1];yt.target='_blank';yt.rel='noopener';yt.textContent='Ouvrir sur YouTube';
+      card.appendChild(box);card.appendChild(meta);card.appendChild(yt);grid.appendChild(card);
+    });
+    wrap.appendChild(h);wrap.appendChild(grid);main.appendChild(wrap);
+  });
+  if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
+})();
+</script>
+</body>
+</html>
