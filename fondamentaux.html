@@ -131,7 +131,10 @@ h2 small{font-family:var(--body);font-size:13px;letter-spacing:0;text-transform:
     wrap.appendChild(h);wrap.appendChild(grid);main.appendChild(wrap);
   });
   // memo sheets (images): a click opens them full screen
-  var FICHES=[['Réception de service : lire, se placer, contrôler, orienter','fondamentaux/fiche-reception-service.jpg']];
+  var FICHES=[
+    ['Réception de service : lire, se placer, contrôler, orienter','fondamentaux/fiche-reception-service.jpg'],
+    ['Technique de bloc','fondamentaux/fiche-technique-de-bloc.jpg'],
+    ['Bloc-défense : coordonner le filet et le fond de terrain','fondamentaux/fiche-bloc-defense.jpg']];
   var fw=document.createElement('section');
   var fh=document.createElement('h2');fh.textContent='Fiches mémo';
   var fs=document.createElement('small');fs.textContent='À garder sous la main';fh.appendChild(fs);
