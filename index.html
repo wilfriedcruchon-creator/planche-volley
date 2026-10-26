@@ -62,7 +62,8 @@ button:disabled{opacity:.45;cursor:default}
 select,input[type=text]{background:var(--soft);border:1px solid var(--line);border-radius:7px;padding:7px 9px;min-width:0}
 .sw{width:26px;height:26px;padding:0;border-radius:50%;border:2px solid var(--line)}
 .sw[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--panel)}
-.board{padding:8px}
+.board{padding:8px;position:relative}
+.polybar{position:absolute;left:14px;top:14px;z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 28px);background:rgba(11,11,13,.9);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
 svg#court{display:block;width:100%;height:auto;aspect-ratio:1000/660;max-width:100%;border-radius:6px;touch-action:none;user-select:none;-webkit-user-select:none}
 svg#court.t-move{cursor:default}
 svg#court.t-draw{cursor:crosshair}
@@ -174,7 +175,8 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       <button id="tMove" aria-pressed="true" title="Déplacer les joueurs et le ballon">Déplacer</button>
       <button id="tArrow" aria-pressed="false" title="Tracer une flèche droite">Flèche</button>
       <button id="tFree" aria-pressed="false" title="Dessiner une trajectoire à main levée">Trait libre</button>
-      <button id="tZone" aria-pressed="false" title="Tracer une zone colorée (zone de réception, par exemple)">Zone</button>
+      <button id="tZone" aria-pressed="false" title="Tracer une zone rectangulaire (zone de réception, par exemple)">Zone</button>
+      <button id="tPoly" aria-pressed="false" title="Tracer une zone de n'importe quelle forme : touchez chaque coin, puis fermez la forme">Polygone</button>
       <button id="tErase" aria-pressed="false" title="Cliquer sur un tracé pour l'effacer">Gomme</button>
       <span class="sep"></span>
       <button id="sDash" aria-pressed="false" title="Trait pointillé (trajectoire du ballon)">Pointillé</button>
@@ -189,6 +191,11 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     </div>
 
     <div class="card board">
+      <div id="polyBar" class="polybar" hidden>
+        <span id="polyMsg"></span>
+        <button id="polyDone" class="primary">Terminer</button>
+        <button id="polyCancel">Annuler</button>
+      </div>
       <svg id="court" class="t-move anim" viewBox="0 0 1000 660" tabindex="0" role="img" aria-label="Terrain de volley, 18 m sur 9 m"></svg>
     </div>
 
@@ -289,6 +296,8 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
         <label class="field" id="zoneField" hidden style="margin-bottom:8px">Texte de la zone
           <input type="text" id="zlbl" maxlength="20" autocomplete="off" placeholder="ex. Wil">
         </label>
+        <button id="zoneToPoly" hidden style="margin-bottom:8px" title="Permet ensuite de déformer la zone point par point">Transformer en polygone</button>
+        <p class="hint" id="polyHelp" hidden style="margin:0 0 8px">Glissez un point pour déformer la zone, touchez le « + » au milieu d'un côté pour ajouter un point, double-touchez un point pour le supprimer.</p>
         <div id="playerFields" class="stack" style="gap:8px;margin-bottom:8px">
           <label class="field">Nom du joueur
             <input type="text" id="pname" maxlength="20" autocomplete="off" placeholder="ex. Camille">
@@ -358,7 +367,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   function posFor(team,slot,f){var p=FORM[f||'base'][slot];var mirror=(team==='b')!==!!(state&&state.swapped);return mirror?[1000-p[0],660-p[1]]:[p[0],p[1]]}
 
   var COLORS=['#ffffff','#ffd23f','#7be0ff','#ff6b6b'];
-  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='', PLAYERS={}, boardDirty=false, commitTimer=null, lastBoardUpdated=0, curMatch=null, selStroke=null, sDrag=null, eDrag=null;
+  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='', PLAYERS={}, boardDirty=false, commitTimer=null, lastBoardUpdated=0, curMatch=null, selStroke=null, sDrag=null, eDrag=null, polyDraft=null, lastHandleTap=null;
 
   function freshItems(){
     var items=[];
@@ -431,6 +440,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     });
     el('g',{id:'strokeLayer'},svg);
     el('g',{id:'itemLayer'},svg);
+    el('g',{id:'draftLayer','pointer-events':'none'},svg);
   }
 
   // ---------- rendering ----------
@@ -498,28 +508,96 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     var a=F().strokes,i=a.indexOf(st);
     if(i>=0&&i<a.length-1){a.splice(i,1);a.push(st)}
   }
+  function polyCentroid(pts){
+    var A=0,cx=0,cy=0,i,j;
+    for(i=0;i<pts.length;i++){j=(i+1)%pts.length;var f=pts[i][0]*pts[j][1]-pts[j][0]*pts[i][1];A+=f;cx+=(pts[i][0]+pts[j][0])*f;cy+=(pts[i][1]+pts[j][1])*f}
+    if(Math.abs(A)<1e-3){var sx=0,sy=0;pts.forEach(function(p){sx+=p[0];sy+=p[1]});return [sx/pts.length,sy/pts.length]}
+    return [cx/(3*A),cy/(3*A)];
+  }
   function drawZone(s,layer){
-    var a=s.pts[0],b=s.pts[1],x=Math.min(a[0],b[0]),y=Math.min(a[1],b[1]),w=Math.abs(a[0]-b[0]),h=Math.abs(a[1]-b[1]);
-    var g=el('g',{},layer);
-    if(s.id===selStroke)el('rect',{x:x-4,y:y-4,width:w+8,height:h+8,rx:14,fill:'none',stroke:'#ffffff','stroke-opacity':.6,'stroke-width':6},g);
-    el('rect',{x:x,y:y,width:w,height:h,rx:12,fill:s.color,'fill-opacity':.2,stroke:s.color,'stroke-width':3,'stroke-dasharray':'12 8','stroke-opacity':.9},g);
+    var poly=!!s.poly&&s.pts.length>=3;
+    var xs=s.pts.map(function(q){return q[0]}),ys=s.pts.map(function(q){return q[1]});
+    var x=Math.min.apply(null,xs),y=Math.min.apply(null,ys),w=Math.max.apply(null,xs)-x,h=Math.max.apply(null,ys)-y;
+    var g=el('g',{},layer),ptsAttr=s.pts.map(function(q){return q[0].toFixed(1)+','+q[1].toFixed(1)}).join(' ');
+    if(poly){
+      if(s.id===selStroke)el('polygon',{points:ptsAttr,fill:'none',stroke:'#ffffff','stroke-opacity':.6,'stroke-width':8,'stroke-linejoin':'round'},g);
+      el('polygon',{points:ptsAttr,fill:s.color,'fill-opacity':.2,stroke:s.color,'stroke-width':3,'stroke-dasharray':'12 8','stroke-opacity':.9,'stroke-linejoin':'round'},g);
+    }else{
+      if(s.id===selStroke)el('rect',{x:x-4,y:y-4,width:w+8,height:h+8,rx:14,fill:'none',stroke:'#ffffff','stroke-opacity':.6,'stroke-width':6},g);
+      el('rect',{x:x,y:y,width:w,height:h,rx:12,fill:s.color,'fill-opacity':.2,stroke:s.color,'stroke-width':3,'stroke-dasharray':'12 8','stroke-opacity':.9},g);
+    }
     if(s.label){
       // "Name · role": the name on the first line, the role smaller underneath
       var parts=String(s.label).split(' · '),L0=parts[0],L1=parts[1]||'';
       var f1=Math.max(13,Math.min(24,w/(Math.max(L0.length,L1.length*0.8,4)*0.6),h/(L1?4.2:3)));
       if(!L1&&h<130)f1=Math.min(f1,15);
-      var ty=s.ltop?(L1?y+f1*0.95+4:y+f1*0.75+3):y+h/2-(L1?f1*0.5:0);
-      var t=el('text',{x:x+w/2,y:ty,class:'zlabel','font-size':f1,fill:s.color},g);t.textContent=L0;
-      if(L1){var t2=el('text',{x:x+w/2,y:ty+f1*1.05,class:'zlabel','font-size':Math.round(f1*0.78),fill:s.color},g);t2.textContent=L1}
+      var lx=x+w/2,ty;
+      if(poly){var ce=polyCentroid(s.pts);lx=ce[0];ty=ce[1]-(L1?f1*0.5:0)}
+      else ty=s.ltop?(L1?y+f1*0.95+4:y+f1*0.75+3):y+h/2-(L1?f1*0.5:0);
+      var t=el('text',{x:lx,y:ty,class:'zlabel','font-size':f1,fill:s.color},g);t.textContent=L0;
+      if(L1){var t2=el('text',{x:lx,y:ty+f1*1.05,class:'zlabel','font-size':Math.round(f1*0.78),fill:s.color},g);t2.textContent=L1}
     }
-    el('rect',{class:'hit','data-id':s.id,x:x,y:y,width:w,height:h,fill:'transparent','pointer-events':(tool==='erase'||tool==='move')?'all':'none'},g);
+    var hitOn=(tool==='erase'||tool==='move')?'all':'none';
+    if(poly)el('polygon',{class:'hit','data-id':s.id,points:ptsAttr,fill:'transparent','pointer-events':hitOn},g);
+    else el('rect',{class:'hit','data-id':s.id,x:x,y:y,width:w,height:h,fill:'transparent','pointer-events':hitOn},g);
     if(s.id===selStroke&&tool==='move'){
-      [0,1].forEach(function(k){
-        var q=s.pts[k];
-        el('circle',{cx:q[0],cy:q[1],r:9,fill:'#fff',stroke:'#e10f1a','stroke-width':3,'pointer-events':'none'},g);
-        el('circle',{class:'handle','data-end':k,cx:q[0],cy:q[1],r:26,fill:'transparent','pointer-events':'all'},g);
-      });
+      if(poly){
+        s.pts.forEach(function(q,k){   // "+" in the middle of each side adds a point
+          var nx=s.pts[(k+1)%s.pts.length],mx=(q[0]+nx[0])/2,my=(q[1]+nx[1])/2;
+          el('circle',{cx:mx,cy:my,r:6,fill:'#e10f1a',stroke:'#fff','stroke-width':2,'pointer-events':'none'},g);
+          el('circle',{class:'mid','data-i':k,cx:mx,cy:my,r:15,fill:'transparent','pointer-events':'all'},g);
+        });
+        s.pts.forEach(function(q,k){
+          el('circle',{cx:q[0],cy:q[1],r:9,fill:'#fff',stroke:'#e10f1a','stroke-width':3,'pointer-events':'none'},g);
+          el('circle',{class:'handle','data-end':k,cx:q[0],cy:q[1],r:20,fill:'transparent','pointer-events':'all'},g);
+        });
+      }else{
+        [0,1].forEach(function(k){
+          var q=s.pts[k];
+          el('circle',{cx:q[0],cy:q[1],r:9,fill:'#fff',stroke:'#e10f1a','stroke-width':3,'pointer-events':'none'},g);
+          el('circle',{class:'handle','data-end':k,cx:q[0],cy:q[1],r:26,fill:'transparent','pointer-events':'all'},g);
+        });
+      }
     }
+  }
+  // polygon being drawn: points placed so far and a line to the pointer
+  function renderDraft(){
+    var L=$('draftLayer');if(!L)return;L.innerHTML='';
+    if(!polyDraft)return;
+    var pts=polyDraft.pts,all=pts.concat(polyDraft.cursor?[polyDraft.cursor]:[]);
+    var d='M'+all.map(function(q){return q[0].toFixed(1)+' '+q[1].toFixed(1)}).join(' L');
+    if(pts.length>=3)el('path',{d:d+' Z',fill:color,'fill-opacity':.12,stroke:'none'},L);
+    el('path',{d:d,fill:'none',stroke:'rgba(0,0,0,.5)','stroke-width':7,'stroke-linecap':'round','stroke-linejoin':'round'},L);
+    el('path',{d:d,fill:'none',stroke:color,'stroke-width':3.5,'stroke-dasharray':'10 7','stroke-linecap':'round','stroke-linejoin':'round'},L);
+    pts.forEach(function(q,k){
+      var first=k===0&&pts.length>=3;
+      el('circle',{cx:q[0],cy:q[1],r:first?13:8,fill:first?'#e10f1a':'#fff',stroke:first?'#fff':'#e10f1a','stroke-width':3},L);
+    });
+  }
+  function updatePolyBar(){
+    var on=tool==='poly';$('polyBar').hidden=!on;if(!on)return;
+    var n=polyDraft?polyDraft.pts.length:0;
+    $('polyMsg').textContent=!n?'Touchez le terrain pour placer le premier coin.':(n<3?n+' point'+(n>1?'s':'')+'. Ajoutez au moins 3 points.':n+' points. Touchez le premier point (en rouge) ou « Terminer » pour fermer la forme.');
+    $('polyDone').disabled=n<3;
+  }
+  function cancelPoly(){polyDraft=null;renderDraft();updatePolyBar()}
+  function finishPoly(){
+    if(!polyDraft||polyDraft.pts.length<3){cancelPoly();return}
+    pushUndo();
+    var z={id:nid(),kind:'zone',poly:true,dash:false,color:color,pts:polyDraft.pts.map(function(q){return [q[0],q[1]]})};
+    F().strokes.push(z);polyDraft=null;persist();
+    setTool('move');selStroke=z.id;renderStrokes();renderPanel();
+  }
+  function polyClick(p){
+    if(!polyDraft){polyDraft={pts:[p],cursor:p}}
+    else{
+      var pts=polyDraft.pts,first=pts[0],last=pts[pts.length-1];
+      if(pts.length>=3&&Math.hypot(p[0]-first[0],p[1]-first[1])<26){finishPoly();return}      // back on the first point
+      if(pts.length>=3&&Math.hypot(p[0]-last[0],p[1]-last[1])<16){finishPoly();return}        // double tap on the last point
+      if(Math.hypot(p[0]-last[0],p[1]-last[1])<8)return;
+      pts.push(p);
+    }
+    renderDraft();updatePolyBar();
   }
   function renderStrokes(){
     var layer=$('strokeLayer');layer.innerHTML='';
@@ -568,6 +646,8 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     var sObj=(!it&&selStroke)?F().strokes.find(function(x){return x.id===selStroke}):null;
     var so=!!sObj;
     $('zoneField').hidden=!(sObj&&sObj.kind==='zone');
+    $('zoneToPoly').hidden=!(sObj&&sObj.kind==='zone'&&!sObj.poly);
+    $('polyHelp').hidden=!(sObj&&sObj.kind==='zone'&&sObj.poly);
     if(sObj&&sObj.kind==='zone'&&document.activeElement!==$('zlbl'))$('zlbl').value=sObj.label||'';
     $('selNone').hidden=!!(it||so);$('selBox').hidden=!(it||so);
     if(so)$('playerFields').hidden=true;
@@ -623,12 +703,26 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
         var it=find(n.getAttribute('data-id'));
         sel=it.id;selStroke=null;drag={id:it.id,dx:it.x-p[0],dy:it.y-p[1],moved:false,pre:dump()};
         svg.setPointerCapture(e.pointerId);svg.classList.add('dragging');
+      }else if(e.target.closest('.mid')){
+        var so5=F().strokes.find(function(x){return x.id===selStroke}),mi=+e.target.closest('.mid').getAttribute('data-i');
+        if(so5&&so5.poly){   // add a point in the middle of the side and start dragging it
+          var pre5=dump(),a5=so5.pts[mi],b5=so5.pts[(mi+1)%so5.pts.length];
+          so5.pts.splice(mi+1,0,[(a5[0]+b5[0])/2,(a5[1]+b5[1])/2]);
+          eDrag={id:so5.id,end:mi+1,orig:so5.pts.map(function(q){return q.slice()}),moved:true,pre:pre5};
+          bringToFront(so5);svg.setPointerCapture(e.pointerId);
+        }
       }else if(e.target.closest('.handle')){
         var so0=F().strokes.find(function(x){return x.id===selStroke}),hd=e.target.closest('.handle');
         if(so0){
-          eDrag={id:so0.id,end:+hd.getAttribute('data-end'),orig:so0.pts.map(function(q){return q.slice()}),moved:false,pre:dump()};
-          bringToFront(so0);
-          svg.setPointerCapture(e.pointerId);
+          var hi=+hd.getAttribute('data-end');
+          if(so0.poly&&so0.pts.length>3&&lastHandleTap&&lastHandleTap.id===so0.id&&lastHandleTap.i===hi&&Date.now()-lastHandleTap.t<420){
+            pushUndo();so0.pts.splice(hi,1);lastHandleTap=null;persist();renderStrokes();   // double tap removes the point
+          }else{
+            lastHandleTap={id:so0.id,i:hi,t:Date.now()};
+            eDrag={id:so0.id,end:hi,orig:so0.pts.map(function(q){return q.slice()}),moved:false,pre:dump()};
+            bringToFront(so0);
+            svg.setPointerCapture(e.pointerId);
+          }
         }
       }else{
         var h=e.target.closest('.hit'),so=null;
@@ -644,6 +738,8 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
         }
       }
       renderItems();renderStrokes();renderPanel();
+    }else if(tool==='poly'){
+      polyClick(p);
     }else if(tool==='erase'){
       erasing=true;svg.setPointerCapture(e.pointerId);
       var h=e.target.closest('.hit');if(h)removeStroke(h.getAttribute('data-id'));
@@ -655,13 +751,14 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     }
   });
   svg.addEventListener('pointermove',function(e){
+    if(tool==='poly'&&polyDraft){polyDraft.cursor=pt(e);renderDraft();return}
     if(eDrag){
       var so3=F().strokes.find(function(x){return x.id===eDrag.id});
       if(!so3)return;
       var np=pt(e),o=eDrag.orig,n=o.length;
       if(so3.kind==='zone'){
         var zp=o.map(function(q){return q.slice()});
-        zp[eDrag.end?1:0]=np;eDrag.moved=true;so3.pts=zp;renderStrokes();return;
+        zp[so3.poly?eDrag.end:(eDrag.end?1:0)]=np;eDrag.moved=true;so3.pts=zp;renderStrokes();return;
       }
       var F0=eDrag.end?o[0]:o[n-1], E0=eDrag.end?o[n-1]:o[0];
       var ax=E0[0]-F0[0],ay=E0[1]-F0[1],bx=np[0]-F0[0],by=np[1]-F0[1],den=ax*ax+ay*ay;
@@ -723,15 +820,21 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     $('tArrow').setAttribute('aria-pressed',t==='arrow');
     $('tFree').setAttribute('aria-pressed',t==='free');
     $('tZone').setAttribute('aria-pressed',t==='zone');
+    $('tPoly').setAttribute('aria-pressed',t==='poly');
     $('tErase').setAttribute('aria-pressed',t==='erase');
     svg.setAttribute('class',(t==='move'?'t-move':t==='erase'?'t-erase':'t-draw')+' anim');
     if(t!=='move'){sel=null;selStroke=null}
+    if(t!=='poly')polyDraft=null;
+    renderDraft();updatePolyBar();
     renderItems();renderStrokes();renderPanel();
   }
   $('tMove').onclick=function(){setTool('move')};
   $('tArrow').onclick=function(){setTool('arrow')};
   $('tFree').onclick=function(){setTool('free')};
   $('tZone').onclick=function(){setTool('zone')};
+  $('tPoly').onclick=function(){setTool('poly')};
+  $('polyDone').onclick=finishPoly;
+  $('polyCancel').onclick=cancelPoly;
   $('tErase').onclick=function(){setTool('erase')};
   $('sDash').onclick=function(){dashed=!dashed;$('sDash').setAttribute('aria-pressed',dashed)};
   COLORS.forEach(function(c,i){
@@ -801,6 +904,14 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     pushUndo();
     F().items=F().items.filter(function(i){return i.id!==sel});sel=null;renderItems();renderPanel();persist();
   }
+  $('zoneToPoly').onclick=function(){
+    var so=selStroke&&F().strokes.find(function(x){return x.id===selStroke});
+    if(!so||so.kind!=='zone'||so.poly)return;
+    pushUndo();
+    var a=so.pts[0],b=so.pts[1],x0=Math.min(a[0],b[0]),x1=Math.max(a[0],b[0]),y0=Math.min(a[1],b[1]),y1=Math.max(a[1],b[1]);
+    so.pts=[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];so.poly=true;
+    persist();renderStrokes();renderPanel();
+  };
   $('zlbl').addEventListener('focus',function(){pushUndo()});
   $('zlbl').addEventListener('input',function(){
     var so=selStroke&&F().strokes.find(function(x){return x.id===selStroke});
@@ -811,6 +922,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   $('del').onclick=deleteSel;
   document.addEventListener('keydown',function(e){
     var tag=(e.target.tagName||'').toLowerCase();
+    if(tool==='poly'&&polyDraft){if(e.key==='Escape'){cancelPoly();return}if(e.key==='Enter'){finishPoly();return}}
     if(e.key==='Escape'&&$('main').classList.contains('fs')){setFull(false);return}
     if(tag==='input'||tag==='select')return;
     if((e.key==='Delete'||e.key==='Backspace')&&(sel||selStroke)){e.preventDefault();deleteSel()}
