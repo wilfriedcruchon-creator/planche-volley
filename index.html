@@ -531,7 +531,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     var F=proj(x,y,0),p0=toPlane(F[0],F[1]),px=toPlane(F[0]+1,F[1]),py=toPlane(F[0],F[1]+1);
     var j11=px[0]-p0[0],j21=px[1]-p0[1],j12=py[0]-p0[0],j22=py[1]-p0[1];
     var s=1/Math.sqrt(Math.abs(j11*j22-j12*j21)||1e-6);
-    return {w:F[2],mat:'matrix('+[j11*s,j21*s,j12*s,j22*s,0,0].map(function(n){return n.toFixed(5)}).join(',')+')',
+    return {w:F[2],F:F,s:s,mat:'matrix('+[j11*s,j21*s,j12*s,j22*s,0,0].map(function(n){return n.toFixed(5)}).join(',')+')',
       S:function(ox,oy,z){var p=proj(x+ox,y+oy,z);return [(p[0]-F[0])/s,(p[1]-F[1])/s]}};
   }
   function drawFig(it,g){
@@ -541,24 +541,38 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     var ball=F().items.find(function(o){return o.type==='ball'}),ux=it.x<500?1:-1,uy=0;
     if(ball&&it.type==='p'){var dx=ball.x-it.x,dy=ball.y-it.y,dl=Math.hypot(dx,dy);if(dl>8){ux=dx/dl;uy=dy/dl}}
     var wx=-uy,wy=ux;
-    function P(p){var q=0.85;return fr.S(q*(p[0]*ux+p[1]*wx),q*(p[0]*uy+p[1]*wy),q*p[2])}   // poses are drawn for a 1.9 m player: scale to the court (44.4 units/m)
+    // every point is projected exactly (client px), then brought back to the court plane with the exact inverse,
+    // so heights match the net and the ball whatever the angle
+    var Fp=fr.F,s0=fr.s,ox=it.x,oy=it.y;
+    function P(p){var q=0.85,r=proj(ox+q*(p[0]*ux+p[1]*wx),oy+q*(p[0]*uy+p[1]*wy),q*p[2]);return [r[0],r[1]]}   // poses are drawn for a 1.9 m player: scale to the court (44.4 units/m)
+    function PL(sp){var t=toPlane(sp[0],sp[1]);return [t[0]-ox,t[1]-oy]}
     el('ellipse',{cx:0,cy:0,rx:22,ry:22,fill:'rgba(0,0,0,.3)'},f);
-    var G=el('g',{transform:fr.mat},f);
-    function Ln(a,b,w,col){
-      var d='M'+a[0].toFixed(1)+' '+a[1].toFixed(1)+' L'+b[0].toFixed(1)+' '+b[1].toFixed(1);
-      el('path',{d:d,stroke:'rgba(0,0,0,.45)','stroke-width':w+4,'stroke-linecap':'round',fill:'none'},G);
-      el('path',{d:d,stroke:col,'stroke-width':w,'stroke-linecap':'round',fill:'none'},G);
+    // group that draws screen-aligned shapes (1 unit = 1 court unit at the player's feet) at a client point
+    function CG(sp,extra){
+      var p=toPlane(sp[0],sp[1]),px=toPlane(sp[0]+1,sp[1]),py=toPlane(sp[0],sp[1]+1);
+      var m=[(px[0]-p[0])*s0,(px[1]-p[1])*s0,(py[0]-p[0])*s0,(py[1]-p[1])*s0,p[0]-ox,p[1]-oy].map(function(n){return n.toFixed(5)});
+      return el('g',{transform:'matrix('+m.join(',')+')'+(extra||'')},f);
     }
-    function CG(p,extra){return el('g',{transform:'translate('+p[0].toFixed(1)+','+p[1].toFixed(1)+')'+(extra||'')},G)}
+    function Disc(sp,r,col,stroke){el('circle',{r:r,fill:col,stroke:stroke||'none','stroke-width':1.5},CG(sp))}
+    function Ln(a,b,w,col){
+      var dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1;
+      function quad(wid,fill){
+        var nx=-dy/l*wid*s0/2,ny=dx/l*wid*s0/2;
+        var pts=[[a[0]+nx,a[1]+ny],[b[0]+nx,b[1]+ny],[b[0]-nx,b[1]-ny],[a[0]-nx,a[1]-ny]].map(function(q){var t=PL(q);return t[0].toFixed(1)+','+t[1].toFixed(1)}).join(' ');
+        el('polygon',{points:pts,fill:fill},f);
+      }
+      quad(w+4,'rgba(0,0,0,.45)');quad(w,col);
+      if(w<20){Disc(a,w/2,col);Disc(b,w/2,col)}
+    }
     if(it.type==='ball'){
-      var bz=ballHeight(it.x),cb0=P([0,0,bz]);
-      if(bz>2)el('path',{d:'M0 0 L'+cb0[0].toFixed(1)+' '+cb0[1].toFixed(1),stroke:'rgba(255,255,255,.35)','stroke-width':1.5,'stroke-dasharray':'3 4',fill:'none'},G);
+      var bz=ballHeight(it.x),bp=proj(ox,oy,bz),cb0=[bp[0],bp[1]];   // true height: 2.5 m above the tape at the net
+      if(bz>2){var q0=PL(cb0);el('path',{d:'M0 0 L'+q0[0].toFixed(1)+' '+q0[1].toFixed(1),stroke:'rgba(255,255,255,.35)','stroke-width':1.5,'stroke-dasharray':'3 4',fill:'none'},f)}
       var cb=CG(cb0,' scale(.62)');
       el('use',{href:'#mikasa',x:-21,y:-21,width:42,height:42,'pointer-events':'all'},cb);
       return;
     }
     if(it.type!=='p'){
-      var cp=CG(P([0,0,0]),' translate(0,-12) scale(.8)');
+      var cp=CG(Fp,' translate(0,-12) scale(.8)');
       el('polygon',{points:'0,-20 17,14 -17,14',fill:'#ff7a1a',stroke:'#fff','stroke-width':3,'stroke-linejoin':'round'},cp);
       return;
     }
@@ -567,14 +581,14 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     ['L','R'].forEach(function(q){
       var kn=P(ps['kn'+q]),ft=P(ps['ft'+q]);
       Ln(hip,kn,12,SHORTS);Ln(kn,ft,8,SKIN);
-      el('circle',{cx:ft[0],cy:ft[1],r:5,fill:'#f3f3f3',stroke:'rgba(0,0,0,.5)','stroke-width':1.5},G);
+      Disc(ft,5,'#f3f3f3','rgba(0,0,0,.5)');
     });
     var jer=it.team==='a'?'url(#cobSwirl)':fill;
     Ln(hip,sh,24,jer);Ln(shL,shR,10,jer);
     ['L','R'].forEach(function(k){
       var e=P(ps['el'+k]),h=P(ps['hn'+k]),sp=k==='L'?shL:shR;
       Ln(sp,e,8,jer);Ln(e,h,7,SKIN);
-      el('circle',{cx:h[0],cy:h[1],r:4.5,fill:SKIN,stroke:'rgba(0,0,0,.45)','stroke-width':1.5},G);
+      Disc(h,4.5,SKIN,'rgba(0,0,0,.45)');
     });
     var mid=P([(ps.hip[0]+ps.sh[0])/2+3,0,(ps.hip[2]+ps.sh[2])/2+2]);
     var ph=photoOf(it),ini=(!ph&&it.pid&&it.name)?it.name.charAt(0).toUpperCase():'';
@@ -605,7 +619,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       el('circle',{cx:-3.4,cy:1.5,r:1.3,fill:'#222'},ch);el('circle',{cx:3.4,cy:1.5,r:1.3,fill:'#222'},ch);
     }
     if(ph&&it.label){var cb2=el('g',{transform:'translate(9,-8)'},ch);el('circle',{r:8,fill:'#0b0b0d',stroke:'#fff','stroke-width':1.5},cb2);var bt=el('text',{y:4,'text-anchor':'middle','font-size':10,'font-weight':800,fill:'#fff'},cb2);bt.textContent=it.label}
-    if(it.name){var cn2=CG([0,0]);var t2=el('text',{class:'pname',y:24},cn2);t2.textContent=it.name}
+    if(it.name){var cn2=CG(Fp);var t2=el('text',{class:'pname',y:24},cn2);t2.textContent=it.name}
   }
   // the net as depth-sorted panels (posts at both ends, white top tape, mesh in between);
   // every vertex is projected exactly, so neighbouring panels join without gaps
