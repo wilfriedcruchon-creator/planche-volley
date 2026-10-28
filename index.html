@@ -442,7 +442,12 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   function el(name,attrs,parent){var e=document.createElementNS(NS,name);for(var k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
   function buildCourt(){
     svg.innerHTML='';
-    el('circle',{r:26.5},el('clipPath',{id:'phClip'},el('defs',{},svg)));
+    var defs0=el('defs',{},svg);
+    el('circle',{r:26.5},el('clipPath',{id:'phClip'},defs0));
+    // COB jersey: red with a darker swirl pattern
+    var jp=el('pattern',{id:'cobSwirl',width:34,height:34,patternUnits:'userSpaceOnUse'},defs0);
+    el('rect',{width:34,height:34,fill:'#d4161c'},jp);
+    ['M-2 9 C6 -3 14 21 22 9 S34 -1 38 8','M-2 26 C7 14 15 38 23 26 S33 17 38 25','M12 -2 C20 8 6 14 14 22 S22 30 16 36'].forEach(function(d){el('path',{d:d,stroke:'#8a0e14','stroke-width':3,fill:'none','stroke-linecap':'round'},jp)});
     el('rect',{x:0,y:0,width:1000,height:660,fill:'var(--free)'},svg);
     el('rect',{x:100,y:130,width:800,height:400,fill:'var(--court)'},svg);
     el('image',{id:'wmA',href:'logo.png',width:240,height:240,y:210,opacity:.11,preserveAspectRatio:'xMidYMid meet','pointer-events':'none'},svg);
@@ -564,15 +569,28 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       Ln(hip,kn,12,SHORTS);Ln(kn,ft,8,SKIN);
       el('circle',{cx:ft[0],cy:ft[1],r:5,fill:'#f3f3f3',stroke:'rgba(0,0,0,.5)','stroke-width':1.5},G);
     });
-    Ln(hip,sh,24,fill);Ln(shL,shR,10,fill);
+    var jer=it.team==='a'?'url(#cobSwirl)':fill;
+    Ln(hip,sh,24,jer);Ln(shL,shR,10,jer);
     ['L','R'].forEach(function(k){
       var e=P(ps['el'+k]),h=P(ps['hn'+k]),sp=k==='L'?shL:shR;
-      Ln(sp,e,8,fill);Ln(e,h,7,SKIN);
+      Ln(sp,e,8,jer);Ln(e,h,7,SKIN);
       el('circle',{cx:h[0],cy:h[1],r:4.5,fill:SKIN,stroke:'rgba(0,0,0,.45)','stroke-width':1.5},G);
     });
     var mid=P([(ps.hip[0]+ps.sh[0])/2+3,0,(ps.hip[2]+ps.sh[2])/2+2]);
     var ph=photoOf(it),ini=(!ph&&it.pid&&it.name)?it.name.charAt(0).toUpperCase():'';
     var nm=ini||it.label||'';
+    // COB shirt: crest on the chest seen from the front, first name on the back
+    if(it.team==='a'){
+      var F0=proj(it.x,it.y,0),F1=proj(it.x+ux*20,it.y+uy*20,0),front=F1[1]-F0[1]>=0;
+      if(front){
+        var lg=CG(P([ps.sh[0]+5,-5,ps.sh[2]-8]));
+        el('circle',{r:6.5,fill:'rgba(0,0,0,.35)'},lg);
+        el('image',{href:'logo.png',x:-6,y:-6,width:12,height:12,preserveAspectRatio:'xMidYMid meet'},lg);
+      }else if(it.name){
+        var bn=it.name.normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase(),bk=CG(P([ps.sh[0]-5,0,ps.sh[2]-9]));
+        var bt2=el('text',{x:0,y:2.5,'text-anchor':'middle','font-size':Math.min(7.5,21/(bn.length*0.7)),'font-weight':800,fill:'#fff','pointer-events':'none'},bk);bt2.textContent=bn;
+      }
+    }
     if(nm&&!ph){var cn=CG(mid);var tx=el('text',{x:0,y:5,'text-anchor':'middle','font-size':nm.length>2?11:15,'font-weight':800,fill:it.team==='l'?'#111':'#fff','pointer-events':'none'},cn);tx.textContent=nm}
     var hd=P(ps.hd),ch=CG(hd);
     if(ph){
