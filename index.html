@@ -137,7 +137,9 @@ body.has-fs{overflow:hidden}
 #main.fs .card{padding:4px 8px;border-radius:0;border-left:0;border-right:0}
 #main.fs h2,#main.fs .field,#main.fs .hint{display:none}
 /* full screen: no club logos or names, the court fills the screen */
-body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none}
+button.fs-only{display:none}
+body.has-fs button.fs-only{display:inline-block}
+body.has-fs #hdTxtA,body.has-fs #hdTxtB{display:none}   /* club logos stay in full screen, the names do not */
 </style>
 
 </head>
@@ -198,6 +200,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       <button id="swapSides" title="Les équipes changent de côté (joueurs, ballon et tracés)">⇄ Inverser les côtés</button>
       <button id="resetAll" class="danger" title="Repart d'un tableau vierge : joueurs en place, sans tracé, une seule étape">Nouveau tableau</button>
       <span class="sep"></span>
+      <button id="rotateFs" class="fs-only" title="Fait tourner l'équipe sélectionnée d'un poste">Rotation ↻</button>
       <button id="fsBtn" aria-pressed="false" title="Agrandir le terrain sur tout l'écran">Plein écran</button>
     </div>
 
@@ -869,7 +872,8 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     [['A',ax],['B',bx]].forEach(function(t){
       var wm=$('wm'+t[0]),hd=$('hd'+t[0]),tx=$('hdTxt'+t[0]);
       if(wm)wm.setAttribute('x',t[1]-120);
-      if(hd){var w=76+Math.max(3,(tx&&tx.textContent.length)||3)*21;hd.setAttribute('transform','translate('+Math.round(t[1]-w/2)+',66)')}
+      if(hd&&document.body.classList.contains('has-fs'))hd.setAttribute('transform','translate('+Math.round(t[1]-22)+',99) scale(.8)');   // full screen: logo only, above the court
+      else if(hd){var w=76+Math.max(3,(tx&&tx.textContent.length)||3)*21;hd.setAttribute('transform','translate('+Math.round(t[1]-w/2)+',66)')}
     });
   }
   function fullRender(){placeCrests();renderItems();renderStrokes();renderSteps();renderPanel()}
@@ -1096,6 +1100,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     F().items.forEach(function(it){if(it.type==='p'&&it.team===teamSel&&it.slot){it.slot=it.slot===1?6:it.slot-1;var p=posFor(it.team,it.slot,f);it.x=p[0];it.y=p[1]}});
     renderItems();persist();renderPanel();
   };
+  $('rotateFs').onclick=function(){$('rotate').click()};
   $('resetTeams').onclick=function(){
     pushUndo();
     var keep=F().items.filter(function(i){return !(i.type==='p'&&(i.team==='a'||i.team==='b'))});
@@ -1157,8 +1162,9 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   function setFull(on){
     var m=$('main');
     m.classList.toggle('fs',on);
-    svg.setAttribute('viewBox',on?'60 108 880 444':'0 0 1000 660');
+    svg.setAttribute('viewBox',on?'60 68 880 484':'0 0 1000 660');
     document.body.classList.toggle('has-fs',on);
+    placeCrests();
     $('fsBtn').textContent=on?'Quitter le plein écran':'Plein écran';
     $('fsBtn').setAttribute('aria-pressed',on);
     if(TOUCH)return;   // on tablets the native mode drops out while dragging; the full-window layout is enough
