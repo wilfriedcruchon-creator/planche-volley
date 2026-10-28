@@ -63,6 +63,11 @@ select,input[type=text]{background:var(--soft);border:1px solid var(--line);bord
 .sw{width:26px;height:26px;padding:0;border-radius:50%;border:2px solid var(--line)}
 .sw[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--panel)}
 .board{padding:8px;position:relative}
+.v3bar label{display:flex;align-items:center;gap:6px;font-size:12px}
+.v3bar input[type=range]{width:110px}
+.board.v3{perspective:1600px;overflow:hidden}
+.board.v3 svg#court{cursor:grab;transition:transform .35s ease}
+.board.v3 svg#court.orbit{transition:none;cursor:grabbing}
 .polybar{position:absolute;left:14px;top:14px;z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 28px);background:rgba(11,11,13,.9);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px}
 svg#court{display:block;width:100%;height:auto;aspect-ratio:1000/660;max-width:100%;border-radius:6px;touch-action:none;user-select:none;-webkit-user-select:none}
 svg#court.t-move{cursor:default}
@@ -176,6 +181,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       <button id="tArrow" aria-pressed="false" title="Tracer une flèche droite">Flèche</button>
       <button id="tFree" aria-pressed="false" title="Dessiner une trajectoire à main levée">Trait libre</button>
       <button id="tZone" aria-pressed="false" title="Tracer une zone rectangulaire (zone de réception, par exemple)">Zone</button>
+      <button id="tView3d" aria-pressed="false" title="Basculer entre la vue de dessus et une vue en 3D (angle réglable)">Vue 3D</button>
       <button id="tPoly" aria-pressed="false" title="Tracer une zone de n'importe quelle forme : touchez chaque coin, puis fermez la forme">Polygone</button>
       <button id="tErase" aria-pressed="false" title="Cliquer sur un tracé pour l'effacer">Gomme</button>
       <span class="sep"></span>
@@ -191,6 +197,13 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     </div>
 
     <div class="card board">
+      <div id="v3Bar" class="polybar v3bar" hidden>
+        <label>Inclinaison <input id="v3Tilt" type="range" min="0" max="80" value="55"></label>
+        <label>Rotation <input id="v3Rot" type="range" min="-180" max="180" value="0"></label>
+        <label>Zoom <input id="v3Zoom" type="range" min="50" max="130" value="85"></label>
+        <button id="v3Reset">Réinitialiser</button>
+        <span class="hint" style="margin:0">Glissez sur le terrain pour tourner la vue. Pour modifier la planche, repassez en vue de dessus.</span>
+      </div>
       <div id="polyBar" class="polybar" hidden>
         <span id="polyMsg"></span>
         <button id="polyDone" class="primary">Terminer</button>
@@ -367,7 +380,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   function posFor(team,slot,f){var p=FORM[f||'base'][slot];var mirror=(team==='b')!==!!(state&&state.swapped);return mirror?[1000-p[0],660-p[1]]:[p[0],p[1]]}
 
   var COLORS=['#ffffff','#ffd23f','#7be0ff','#ff6b6b'];
-  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='', PLAYERS={}, boardDirty=false, commitTimer=null, lastBoardUpdated=0, curMatch=null, selStroke=null, sDrag=null, eDrag=null, polyDraft=null, lastHandleTap=null;
+  var state, undoStack=[], tool='move', dashed=false, color=COLORS[0], teamSel='a', sel=null, drag=null, drawing=null, erasing=false, playTimer=null, savedMsgTimer=null, drawPre='', PLAYERS={}, boardDirty=false, commitTimer=null, lastBoardUpdated=0, curMatch=null, selStroke=null, sDrag=null, eDrag=null, polyDraft=null, lastHandleTap=null, view3d=false, v3={tilt:55,rot:0,zoom:85}, orbit=null;
 
   function freshItems(){
     var items=[];
@@ -561,6 +574,22 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     }
   }
   // polygon being drawn: points placed so far and a line to the pointer
+  function apply3d(){
+    var b=svg.parentNode;
+    b.classList.toggle('v3',view3d);
+    $('v3Bar').hidden=!view3d;
+    $('tView3d').setAttribute('aria-pressed',view3d);
+    $('tView3d').textContent=view3d?'Vue de dessus':'Vue 3D';
+    svg.style.transform=view3d?'rotateX('+v3.tilt+'deg) rotateZ('+v3.rot+'deg) scale('+(v3.zoom/100)+')':'';
+    svg.style.transformOrigin='50% 50%';
+    $('v3Tilt').value=v3.tilt;$('v3Rot').value=v3.rot;$('v3Zoom').value=v3.zoom;
+    if(view3d&&$('main').classList.contains('fs')){b.style.minHeight='0'}
+  }
+  function setView3d(on){
+    view3d=!!on;
+    if(view3d){polyDraft=null;renderDraft();updatePolyBar();if(tool==='poly')setTool('move')}
+    apply3d();
+  }
   function renderDraft(){
     var L=$('draftLayer');if(!L)return;L.innerHTML='';
     if(!polyDraft)return;
@@ -695,6 +724,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     if(i>=0){pushUndo();s.splice(i,1);renderStrokes();persist()}
   }
   svg.addEventListener('pointerdown',function(e){
+    if(view3d){orbit={x:e.clientX,y:e.clientY,tilt:v3.tilt,rot:v3.rot};svg.classList.add('orbit');svg.setPointerCapture(e.pointerId);return}
     stopPlay();
     var p=pt(e);
     if(tool==='move'){
@@ -751,6 +781,11 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     }
   });
   svg.addEventListener('pointermove',function(e){
+    if(orbit){
+      v3.rot=Math.max(-180,Math.min(180,Math.round(orbit.rot+(e.clientX-orbit.x)*0.4)));
+      v3.tilt=Math.max(0,Math.min(80,Math.round(orbit.tilt-(e.clientY-orbit.y)*0.3)));
+      apply3d();return;
+    }
     if(tool==='poly'&&polyDraft){polyDraft.cursor=pt(e);renderDraft();return}
     if(eDrag){
       var so3=F().strokes.find(function(x){return x.id===eDrag.id});
@@ -794,6 +829,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     }
   });
   function endPointer(){
+    if(orbit){orbit=null;svg.classList.remove('orbit');return}
     if(eDrag){if(eDrag.moved){pushUndo(eDrag.pre);persist()}eDrag=null}
     if(sDrag){if(sDrag.moved){pushUndo(sDrag.pre);persist()}sDrag=null}
     if(drag){
@@ -815,6 +851,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
 
   // ---------- tools ----------
   function setTool(t){
+    if(view3d&&t!=='move')setView3d(false);
     tool=t;
     $('tMove').setAttribute('aria-pressed',t==='move');
     $('tArrow').setAttribute('aria-pressed',t==='arrow');
@@ -832,7 +869,10 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   $('tArrow').onclick=function(){setTool('arrow')};
   $('tFree').onclick=function(){setTool('free')};
   $('tZone').onclick=function(){setTool('zone')};
-  $('tPoly').onclick=function(){setTool('poly')};
+  $('tPoly').onclick=function(){if(view3d)setView3d(false);setTool('poly')};
+  $('tView3d').onclick=function(){setView3d(!view3d)};
+  ['Tilt:tilt','Rot:rot','Zoom:zoom'].forEach(function(x){var p=x.split(':');$('v3'+p[0]).oninput=function(){v3[p[1]]=+this.value;apply3d()}});
+  $('v3Reset').onclick=function(){v3={tilt:55,rot:0,zoom:85};apply3d()};
   $('polyDone').onclick=finishPoly;
   $('polyCancel').onclick=cancelPoly;
   $('tErase').onclick=function(){setTool('erase')};
