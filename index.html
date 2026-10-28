@@ -502,11 +502,16 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     attack:{hip:[-6,0,60],sh:[-4,0,86],hd:[0,0,98],knL:[-4,-8,36],ftL:[-10,-10,14],knR:[2,8,40],ftR:[-6,10,14],elL:[12,-14,92],hnL:[22,-10,104],elR:[-4,16,108],hnR:[6,14,130]}
   };
   var SKIN='#e8b894',SHORTS='#1b1b1f';
+  // ball height: on the floor at the end line, just above the tape (2.43 m) at the net
+  function ballHeight(x){return 142*Math.max(0,1-Math.abs(x-500)/400)}
   function drawFig(it,g){
     var f=g.querySelector('.fig');if(!f)return;f.innerHTML='';
     var r=v3.rot*Math.PI/180,T=v3.tilt*Math.PI/180,tn=Math.tan(T),cs=Math.max(0.15,Math.cos(T));
-    var dir=it.x<500?1:-1;
-    function P(p){var k=p[2]*tn;return [p[0]*dir-k*Math.sin(r),p[1]*dir-k*Math.cos(r)]}
+    // every player faces the ball (the net when there is no ball)
+    var ball=F().items.find(function(o){return o.type==='ball'}),ux=it.x<500?1:-1,uy=0;
+    if(ball&&it.type==='p'){var dx=ball.x-it.x,dy=ball.y-it.y,dl=Math.hypot(dx,dy);if(dl>8){ux=dx/dl;uy=dy/dl}}
+    var wx=-uy,wy=ux;
+    function P(p){var k=p[2]*tn;return [p[0]*ux+p[1]*wx-k*Math.sin(r),p[0]*uy+p[1]*wy-k*Math.cos(r)]}
     function L(a,b,w,col){
       var d='M'+a[0].toFixed(1)+' '+a[1].toFixed(1)+' L'+b[0].toFixed(1)+' '+b[1].toFixed(1);
       el('path',{d:d,stroke:'rgba(0,0,0,.45)','stroke-width':w+4,'stroke-linecap':'round',fill:'none'},f);
@@ -515,7 +520,9 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     function CG(p,extra){return el('g',{transform:'translate('+p[0].toFixed(1)+','+p[1].toFixed(1)+') rotate('+(-v3.rot)+') scale(1,'+(1/cs).toFixed(3)+')'+(extra||'')},f)}
     el('ellipse',{cx:0,cy:0,rx:22,ry:22,fill:'rgba(0,0,0,.3)'},f);
     if(it.type==='ball'){
-      var cb=CG(P([0,0,22]),' scale(.9)');
+      var bz=ballHeight(it.x),cb0=P([0,0,bz]);
+      if(bz>2)el('path',{d:'M0 0 L'+cb0[0].toFixed(1)+' '+cb0[1].toFixed(1),stroke:'rgba(255,255,255,.35)','stroke-width':1.5,'stroke-dasharray':'3 4'},f);
+      var cb=CG(cb0,' scale(.9)');
       el('use',{href:'#mikasa',x:-21,y:-21,width:42,height:42,'pointer-events':'all'},cb);
       return;
     }
