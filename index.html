@@ -504,55 +504,76 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   var SKIN='#e8b894',SHORTS='#1b1b1f';
   // ball height: on the floor at the end line, just above the tape (2.43 m) at the net
   function ballHeight(x){return 142*Math.max(0,1-Math.abs(x-500)/400)}
+  // camera = exact CSS projection of the court plane + heights along the plane normal
+  var CAM=null;
+  function camera(){
+    var par=svg.parentNode,pr=par.getBoundingClientRect(),persp=parseFloat(getComputedStyle(par).perspective)||1600;
+    var tr0=svg.style.transform;svg.style.transform='none';var R=svg.getBoundingClientRect();svg.style.transform=tr0;
+    var po=[pr.left+pr.width/2,pr.top+pr.height/2],o=[R.left+R.width/2,R.top+R.height/2];
+    var sc=Math.min(R.width/1000,R.height/660),ox=R.left+(R.width-1000*sc)/2,oy=R.top+(R.height-660*sc)/2;
+    var m=new DOMMatrix([1,0,0,0,0,1,0,0,0,0,1,-1/persp,0,0,0,1]);
+    m=new DOMMatrix().translateSelf(po[0],po[1]).multiplySelf(m).translateSelf(-po[0],-po[1]).translateSelf(o[0],o[1])
+      .rotateAxisAngleSelf(1,0,0,v3.tilt).rotateAxisAngleSelf(0,0,1,v3.rot).scaleSelf(v3.zoom/100)
+      .translateSelf(-o[0],-o[1]).translateSelf(ox,oy).scaleSelf(sc);
+    var N=new DOMMatrix([m.m11,m.m12,0,m.m14,m.m21,m.m22,0,m.m24,0,0,1,0,m.m41,m.m42,0,m.m44]);
+    return {m:m,inv:N.inverse(),K:sc*v3.zoom/100};
+  }
+  function proj(x,y,z){var p=CAM.m.transformPoint(new DOMPoint(x,y,z*CAM.K,1));return [p.x/p.w,p.y/p.w,p.w]}
+  function toPlane(sx,sy){var q=CAM.inv.transformPoint(new DOMPoint(sx,sy,0,1));return [q.x/q.w,q.y/q.w]}
+  // frame at a ground point: a group transform that lets us draw in "screen-like" units (1 unit = 1 court unit on screen)
+  // and S(dx,dy,z) giving the exact screen position of a point at that height, relative to the foot
+  function figFrame(x,y){
+    var F=proj(x,y,0),p0=toPlane(F[0],F[1]),px=toPlane(F[0]+1,F[1]),py=toPlane(F[0],F[1]+1);
+    var j11=px[0]-p0[0],j21=px[1]-p0[1],j12=py[0]-p0[0],j22=py[1]-p0[1];
+    var s=1/Math.sqrt(Math.abs(j11*j22-j12*j21)||1e-6);
+    return {w:F[2],mat:'matrix('+[j11*s,j21*s,j12*s,j22*s,0,0].map(function(n){return n.toFixed(5)}).join(',')+')',
+      S:function(ox,oy,z){var p=proj(x+ox,y+oy,z);return [(p[0]-F[0])/s,(p[1]-F[1])/s]}};
+  }
   function drawFig(it,g){
     var f=g.querySelector('.fig');if(!f)return;f.innerHTML='';
-    var r=v3.rot*Math.PI/180,T=v3.tilt*Math.PI/180,tn=Math.tan(T),cs=Math.max(0.15,Math.cos(T));
+    var fr=figFrame(it.x,it.y);g.__w=fr.w;
     // every player faces the ball (the net when there is no ball)
     var ball=F().items.find(function(o){return o.type==='ball'}),ux=it.x<500?1:-1,uy=0;
     if(ball&&it.type==='p'){var dx=ball.x-it.x,dy=ball.y-it.y,dl=Math.hypot(dx,dy);if(dl>8){ux=dx/dl;uy=dy/dl}}
     var wx=-uy,wy=ux;
-    function P(p){var k=p[2]*tn;return [p[0]*ux+p[1]*wx-k*Math.sin(r),p[0]*uy+p[1]*wy-k*Math.cos(r)]}
-    function L(a,b,w,col){
-      var d='M'+a[0].toFixed(1)+' '+a[1].toFixed(1)+' L'+b[0].toFixed(1)+' '+b[1].toFixed(1);
-      el('path',{d:d,stroke:'rgba(0,0,0,.45)','stroke-width':w+4,'stroke-linecap':'round',fill:'none'},f);
-      el('path',{d:d,stroke:col,'stroke-width':w,'stroke-linecap':'round',fill:'none'},f);
-    }
-    function CG(p,extra){return el('g',{transform:'translate('+p[0].toFixed(1)+','+p[1].toFixed(1)+') rotate('+(-v3.rot)+') scale(1,'+(1/cs).toFixed(3)+')'+(extra||'')},f)}
+    function P(p){return fr.S(p[0]*ux+p[1]*wx,p[0]*uy+p[1]*wy,p[2])}
     el('ellipse',{cx:0,cy:0,rx:22,ry:22,fill:'rgba(0,0,0,.3)'},f);
+    var G=el('g',{transform:fr.mat},f);
+    function Ln(a,b,w,col){
+      var d='M'+a[0].toFixed(1)+' '+a[1].toFixed(1)+' L'+b[0].toFixed(1)+' '+b[1].toFixed(1);
+      el('path',{d:d,stroke:'rgba(0,0,0,.45)','stroke-width':w+4,'stroke-linecap':'round',fill:'none'},G);
+      el('path',{d:d,stroke:col,'stroke-width':w,'stroke-linecap':'round',fill:'none'},G);
+    }
+    function CG(p,extra){return el('g',{transform:'translate('+p[0].toFixed(1)+','+p[1].toFixed(1)+')'+(extra||'')},G)}
     if(it.type==='ball'){
       var bz=ballHeight(it.x),cb0=P([0,0,bz]);
-      if(bz>2)el('path',{d:'M0 0 L'+cb0[0].toFixed(1)+' '+cb0[1].toFixed(1),stroke:'rgba(255,255,255,.35)','stroke-width':1.5,'stroke-dasharray':'3 4'},f);
-      var cb=CG(cb0,' scale(.9)');
+      if(bz>2)el('path',{d:'M0 0 L'+cb0[0].toFixed(1)+' '+cb0[1].toFixed(1),stroke:'rgba(255,255,255,.35)','stroke-width':1.5,'stroke-dasharray':'3 4',fill:'none'},G);
+      var cb=CG(cb0,' scale(.62)');
       el('use',{href:'#mikasa',x:-21,y:-21,width:42,height:42,'pointer-events':'all'},cb);
       return;
     }
     if(it.type!=='p'){
-      var cp=CG(P([0,0,0]),' translate(0,-14)');
+      var cp=CG(P([0,0,0]),' translate(0,-12) scale(.8)');
       el('polygon',{points:'0,-20 17,14 -17,14',fill:'#ff7a1a',stroke:'#fff','stroke-width':3,'stroke-linejoin':'round'},cp);
       return;
     }
     var ps=POSES[it.pose]||POSES.ready,fill=itemFill(it),hip=P(ps.hip),sh=P(ps.sh);
     var shL=P([ps.sh[0],-10,ps.sh[2]-2]),shR=P([ps.sh[0],10,ps.sh[2]-2]);
-    // legs
-    [['L','kn','ft'],['R','kn','ft']].forEach(function(q){
-      var kn=P(ps['kn'+q[0]]),ft=P(ps['ft'+q[0]]);
-      L(hip,kn,12,SHORTS);L(kn,ft,8,SKIN);
-      el('circle',{cx:ft[0],cy:ft[1],r:5,fill:'#f3f3f3',stroke:'rgba(0,0,0,.5)','stroke-width':1.5},f);
+    ['L','R'].forEach(function(q){
+      var kn=P(ps['kn'+q]),ft=P(ps['ft'+q]);
+      Ln(hip,kn,12,SHORTS);Ln(kn,ft,8,SKIN);
+      el('circle',{cx:ft[0],cy:ft[1],r:5,fill:'#f3f3f3',stroke:'rgba(0,0,0,.5)','stroke-width':1.5},G);
     });
-    // torso, shoulders
-    L(hip,sh,24,fill);L(shL,shR,10,fill);
-    // arms
+    Ln(hip,sh,24,fill);Ln(shL,shR,10,fill);
     ['L','R'].forEach(function(k){
       var e=P(ps['el'+k]),h=P(ps['hn'+k]),sp=k==='L'?shL:shR;
-      L(sp,e,8,fill);L(e,h,7,SKIN);
-      el('circle',{cx:h[0],cy:h[1],r:4.5,fill:SKIN,stroke:'rgba(0,0,0,.45)','stroke-width':1.5},f);
+      Ln(sp,e,8,fill);Ln(e,h,7,SKIN);
+      el('circle',{cx:h[0],cy:h[1],r:4.5,fill:SKIN,stroke:'rgba(0,0,0,.45)','stroke-width':1.5},G);
     });
-    // number on the chest
     var mid=P([(ps.hip[0]+ps.sh[0])/2+3,0,(ps.hip[2]+ps.sh[2])/2+2]);
     var ph=photoOf(it),ini=(!ph&&it.pid&&it.name)?it.name.charAt(0).toUpperCase():'';
     var nm=ini||it.label||'';
     if(nm&&!ph){var cn=CG(mid);var tx=el('text',{x:0,y:5,'text-anchor':'middle','font-size':nm.length>2?11:15,'font-weight':800,fill:it.team==='l'?'#111':'#fff','pointer-events':'none'},cn);tx.textContent=nm}
-    // head
     var hd=P(ps.hd),ch=CG(hd);
     if(ph){
       var hg=el('g',{transform:'scale(.46)'},ch);
@@ -563,25 +584,25 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
       el('path',{d:'M-9.5 -1 A9.5 9.5 0 0 1 9.5 -1 Q0 -7 -9.5 -1Z',fill:'#3a2a20'},ch);
     }
     if(ph&&it.label){var cb2=el('g',{transform:'translate(9,-8)'},ch);el('circle',{r:8,fill:'#0b0b0d',stroke:'#fff','stroke-width':1.5},cb2);var bt=el('text',{y:4,'text-anchor':'middle','font-size':10,'font-weight':800,fill:'#fff'},cb2);bt.textContent=it.label}
-    // name under the feet
     if(it.name){var cn2=CG([0,0]);var t2=el('text',{class:'pname',y:24},cn2);t2.textContent=it.name}
   }
   // the net as depth-sorted panels (posts at both ends, white top tape, mesh in between)
   function netPanels(){
     Array.prototype.slice.call(document.querySelectorAll('#itemLayer .net3d')).forEach(function(n){n.remove()});
-    var r=v3.rot*Math.PI/180,tn=Math.tan(v3.tilt*Math.PI/180),N=12,y0=112,y1=548,out=[],ZT=135,ZB=82;
-    function Q(dy,z){var k=z*tn;return (-k*Math.sin(r)).toFixed(1)+','+(dy-k*Math.cos(r)).toFixed(1)}
+    var N=12,y0=112,y1=548,out=[],ZT=135,ZB=82;
     for(var i=0;i<N;i++){
-      var ya=y0+(y1-y0)*i/N,yb=y0+(y1-y0)*(i+1)/N,ym=(ya+yb)/2,h=(yb-ya)/2;
+      var ya=y0+(y1-y0)*i/N,yb=y0+(y1-y0)*(i+1)/N,ym=(ya+yb)/2,h=(yb-ya)/2,fr=figFrame(500,ym);
+      function Q(dy,z){var p=fr.S(0,dy,z);return p[0].toFixed(1)+','+p[1].toFixed(1)}
       var g=document.createElementNS('http://www.w3.org/2000/svg','g');g.setAttribute('class','net3d');g.setAttribute('pointer-events','none');
       g.style.transform='translate(500px,'+ym+'px)';
-      el('polygon',{points:[Q(-h,ZB),Q(h,ZB),Q(h,ZT),Q(-h,ZT)].join(' '),fill:'rgba(235,235,235,.16)',stroke:'rgba(235,235,235,.55)','stroke-width':1},g);
-      for(var j=1;j<4;j++){var f=j/4,zz=ZB+(ZT-ZB)*f;el('path',{d:'M'+Q(-h,zz)+' L'+Q(h,zz),stroke:'rgba(235,235,235,.35)','stroke-width':1,fill:'none'},g)}
-      el('path',{d:'M'+Q(0,ZB)+' L'+Q(0,ZT),stroke:'rgba(235,235,235,.35)','stroke-width':1,fill:'none'},g);
-      el('path',{d:'M'+Q(-h,ZT)+' L'+Q(h,ZT),stroke:'#f3f3f3','stroke-width':5,'stroke-linecap':'butt',fill:'none'},g);
-      el('path',{d:'M'+Q(-h,ZB)+' L'+Q(h,ZB),stroke:'#f3f3f3','stroke-width':2,fill:'none'},g);
-      if(i===0||i===N-1){var py=i===0?-h:h;el('path',{d:'M'+Q(py,0)+' L'+Q(py,ZT+6),stroke:'#2b2f33','stroke-width':6,'stroke-linecap':'round',fill:'none'},g)}
-      out.push({k:500*Math.sin(r)+ym*Math.cos(r),n:g});
+      var G=el('g',{transform:fr.mat},g);
+      el('polygon',{points:[Q(-h,ZB),Q(h,ZB),Q(h,ZT),Q(-h,ZT)].join(' '),fill:'rgba(235,235,235,.16)',stroke:'rgba(235,235,235,.55)','stroke-width':1},G);
+      for(var j=1;j<4;j++){var zz=ZB+(ZT-ZB)*j/4;el('path',{d:'M'+Q(-h,zz)+' L'+Q(h,zz),stroke:'rgba(235,235,235,.35)','stroke-width':1,fill:'none'},G)}
+      el('path',{d:'M'+Q(0,ZB)+' L'+Q(0,ZT),stroke:'rgba(235,235,235,.35)','stroke-width':1,fill:'none'},G);
+      el('path',{d:'M'+Q(-h,ZT)+' L'+Q(h,ZT),stroke:'#f3f3f3','stroke-width':5,fill:'none'},G);
+      el('path',{d:'M'+Q(-h,ZB)+' L'+Q(h,ZB),stroke:'#f3f3f3','stroke-width':2,fill:'none'},G);
+      if(i===0||i===N-1){var py=i===0?-h:h;el('path',{d:'M'+Q(py,0)+' L'+Q(py,ZT+6),stroke:'#2b2f33','stroke-width':6,'stroke-linecap':'round',fill:'none'},G)}
+      out.push({w:fr.w,n:g});
     }
     return out;
   }
@@ -613,11 +634,11 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     Object.keys(nodes).forEach(function(id){if(!alive[id]){nodes[id].remove();delete nodes[id]}});
     svg.classList.toggle('v3d',view3d);
     if(view3d){
-      var rr=v3.rot*Math.PI/180;
+      CAM=camera();
       F().items.forEach(function(it){drawFig(it,nodes[it.id])});
-      var order=F().items.map(function(it){return {k:it.x*Math.sin(rr)+it.y*Math.cos(rr),n:nodes[it.id]}});
+      var order=F().items.map(function(it){return {w:nodes[it.id].__w,n:nodes[it.id]}});
       order=order.concat(netPanels());
-      order.sort(function(a,b){return a.k-b.k}).forEach(function(o){layer.appendChild(o.n)});
+      order.sort(function(a,b){return b.w-a.w}).forEach(function(o){layer.appendChild(o.n)});
     }else{
       Array.prototype.slice.call(layer.querySelectorAll('.net3d')).forEach(function(n){n.remove()});
       if(sel&&nodes[sel])layer.appendChild(nodes[sel]);   // keep dragged/selected on top
@@ -832,16 +853,7 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
   // ---------- pointer handling ----------
   // client point -> court coordinates when the board is tilted (inverse of the CSS 3D projection on the court plane)
   function pt3(e){
-    var par=svg.parentNode,pr=par.getBoundingClientRect(),persp=parseFloat(getComputedStyle(par).perspective)||1600;
-    var tr0=svg.style.transform;svg.style.transform='none';var R=svg.getBoundingClientRect();svg.style.transform=tr0;   // untilted layout box
-    var po=[pr.left+pr.width/2,pr.top+pr.height/2],o=[R.left+R.width/2,R.top+R.height/2];
-    var sc=Math.min(R.width/1000,R.height/660),ox=R.left+(R.width-1000*sc)/2,oy=R.top+(R.height-660*sc)/2;
-    var m=new DOMMatrix([1,0,0,0,0,1,0,0,0,0,1,-1/persp,0,0,0,1]);
-    m=new DOMMatrix().translateSelf(po[0],po[1]).multiplySelf(m).translateSelf(-po[0],-po[1]).translateSelf(o[0],o[1])
-      .rotateAxisAngleSelf(1,0,0,v3.tilt).rotateAxisAngleSelf(0,0,1,v3.rot).scaleSelf(v3.zoom/100)
-      .translateSelf(-o[0],-o[1]).translateSelf(ox,oy).scaleSelf(sc);
-    var N=new DOMMatrix([m.m11,m.m12,0,m.m14,m.m21,m.m22,0,m.m24,0,0,1,0,m.m41,m.m42,0,m.m44]);
-    var q=N.inverse().transformPoint(new DOMPoint(e.clientX,e.clientY,0,1));
+    var C=camera(),q=C.inv.transformPoint(new DOMPoint(e.clientX,e.clientY,0,1));
     var X=q.x/q.w,Y=q.y/q.w;if(!isFinite(X)||!isFinite(Y)){X=500;Y=330}
     return [Math.max(14,Math.min(986,X)),Math.max(14,Math.min(646,Y))];
   }
