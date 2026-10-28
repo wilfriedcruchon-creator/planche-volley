@@ -1457,6 +1457,10 @@ body.has-fs #hdTxtA,body.has-fs #hdTxtB{display:none}   /* club logos stay in fu
     return fetch('https://api.github.com'+path,{method:method,headers:{'Authorization':'Bearer '+getTok(),'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:body?JSON.stringify(body):undefined})
       .then(function(r){
         if(r.status===401)throw new Error('AUTH');
+        if(r.status===403&&(r.headers.get('x-ratelimit-remaining')==='0'||r.headers.has('retry-after'))){   // GitHub limits how often a Gist can be written
+          var rs=+r.headers.get('retry-after')||Math.max(60,(+r.headers.get('x-ratelimit-reset')||0)-Math.floor(Date.now()/1000));
+          var er=new Error('RATE');er.mins=Math.max(1,Math.ceil(rs/60));throw er;
+        }
         if(r.status===403||r.status===404)throw new Error('FORBIDDEN');
         if(!r.ok)throw new Error('HTTP '+r.status);
         return r.json();
@@ -1517,6 +1521,7 @@ body.has-fs #hdTxtA,body.has-fs #hdTxtB{display:none}   /* club logos stay in fu
       })
       .catch(function(e){
         if(e.message==='AUTH')syncSay('Jeton refusé. Vérifiez qu’il est copié en entier.','err');
+        else if(e.message==='RATE')syncSay('GitHub limite temporairement les envois (trop de mises à jour rapprochées). Réessayez dans '+(e.mins>90?'environ '+Math.round(e.mins/60)+' h':e.mins+' min')+'. Vos données restent sur cet appareil.','err');
         else if(e.message==='FORBIDDEN')syncSay('Accès refusé. Le jeton doit avoir le droit « gist ».','err');
         else syncSay('Pas de connexion à GitHub. Vos données restent sur cet appareil.','err');
       })
