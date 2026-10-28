@@ -580,8 +580,8 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     var ph=photoOf(it),ini=(!ph&&it.pid&&it.name)?it.name.charAt(0).toUpperCase():'';
     var nm=ini||it.label||'';
     // COB shirt: crest on the chest seen from the front, first name on the back
+    var F0=proj(it.x,it.y,0),F1=proj(it.x+ux*20,it.y+uy*20,0),front=F1[1]-F0[1]>=0;   // does the player face the viewer?
     if(it.team==='a'){
-      var F0=proj(it.x,it.y,0),F1=proj(it.x+ux*20,it.y+uy*20,0),front=F1[1]-F0[1]>=0;
       if(front){
         var lg=CG(P([ps.sh[0]+5,-5,ps.sh[2]-8]));
         el('circle',{r:6.5,fill:'rgba(0,0,0,.35)'},lg);
@@ -593,13 +593,16 @@ body.has-fs #hdA,body.has-fs #hdB,body.has-fs #wmA,body.has-fs #wmB{display:none
     }
     if(nm&&!ph){var cn=CG(mid);var tx=el('text',{x:0,y:5,'text-anchor':'middle','font-size':nm.length>2?11:15,'font-weight':800,fill:it.team==='l'?'#111':'#fff','pointer-events':'none'},cn);tx.textContent=nm}
     var hd=P(ps.hd),ch=CG(hd);
-    if(ph){
+    if(!front){   // seen from behind: hair, no face
+      el('circle',{r:9.5,fill:'#3a2a20',stroke:'rgba(0,0,0,.5)','stroke-width':1.5},ch);
+    }else if(ph){
       var hg=el('g',{transform:'scale(.46)'},ch);
       el('circle',{r:28,fill:'#fff'},hg);
       var im=el('image',{x:-27,y:-27,width:54,height:54,preserveAspectRatio:'xMidYMid slice','clip-path':'url(#phClip)'},hg);im.setAttribute('href',ph);
     }else{
       el('circle',{r:9.5,fill:SKIN,stroke:'rgba(0,0,0,.5)','stroke-width':1.5},ch);
       el('path',{d:'M-9.5 -1 A9.5 9.5 0 0 1 9.5 -1 Q0 -7 -9.5 -1Z',fill:'#3a2a20'},ch);
+      el('circle',{cx:-3.4,cy:1.5,r:1.3,fill:'#222'},ch);el('circle',{cx:3.4,cy:1.5,r:1.3,fill:'#222'},ch);
     }
     if(ph&&it.label){var cb2=el('g',{transform:'translate(9,-8)'},ch);el('circle',{r:8,fill:'#0b0b0d',stroke:'#fff','stroke-width':1.5},cb2);var bt=el('text',{y:4,'text-anchor':'middle','font-size':10,'font-weight':800,fill:'#fff'},cb2);bt.textContent=it.label}
     if(it.name){var cn2=CG([0,0]);var t2=el('text',{class:'pname',y:24},cn2);t2.textContent=it.name}
